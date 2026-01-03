@@ -1,1 +1,5 @@
-<Solution/>
+<Solution>
+    <Project Path="Lauren.Circuit/Lauren.Circuit.csproj"/>
+    <Project Path="Lauren.Codes/Lauren.Codes.csproj"/>
+    <Project Path="Lauren.Physics/Lauren.Physics.csproj"/>
+</Solution>
