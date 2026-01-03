@@ -1,0 +1,86 @@
+﻿# =========================
+# JetBrains Rider / IntelliJ
+# =========================
+.idea/
+*.sln.iml
+
+# Rider sometimes creates these
+*.DotSettings.user
+*.DotSettings
+
+# =========================
+# Visual Studio / MSBuild (often still relevant for .NET repos)
+# =========================
+.vs/
+*.user
+*.userosscache
+*.suo
+*.rsuser
+*.VC.db
+*.VC.VC.opendb
+
+# =========================
+# Build outputs
+# =========================
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa]ny [Cc]pu/
+[Ll]og/
+
+# dotnet publish / artifacts
+publish/
+artifacts/
+
+# =========================
+# NuGet
+# =========================
+# Usually keep packages out of repo (restore will bring them back)
+packages/
+# but keep NuGet config if you use it
+!NuGet.config
+# keep lock files if you want deterministic restore
+# packages.lock.json
+# nuget-related caches (rarely appear inside repo, but safe)
+*.nupkg
+*.snupkg
+
+# =========================
+# Test results / coverage
+# =========================
+TestResults/
+*.trx
+*.coverage
+*.coveragexml
+coverage/
+coverage-report/
+*.opencover.xml
+*.cobertura.xml
+
+# =========================
+# ASP.NET / local dev / secrets
+# =========================
+# Local app settings (choose your policy)
+appsettings.Development.json
+secrets.json
+*.pfx
+
+# IIS Express
+.vs/config/
+applicationhost.config
+
+# =========================
+# OS junk
+# =========================
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# =========================
+# Logs
+# =========================
+*.log
