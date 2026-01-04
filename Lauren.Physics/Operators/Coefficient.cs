@@ -34,6 +34,24 @@ public static class CoefficientExtensions
                 Coefficient.MinusI => new Complex(0, -1)
             };
         }
+        
+        /// <summary>
+        ///     Return the Coefficient corresponding to the given complex number.
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        ///     Thrown when the complex number is not one of: 1, -1, i, -i.
+        /// </exception>
+        public static Coefficient FromComplex(Complex complex)
+        {
+            return complex switch
+            {
+                { Real: 1, Imaginary: 0 } => Coefficient.PlusOne,
+                { Real: -1, Imaginary: 0 } => Coefficient.MinusOne,
+                { Real: 0, Imaginary: 1 } => Coefficient.PlusI,
+                { Real: 0, Imaginary: -1 } => Coefficient.MinusI,
+                _ => throw new ArgumentException("Complex number must be one of: 1, -1, i, -i.")
+            };
+        }
 
         /// <summary>
         ///     Get the coefficient raised to the given exponent.
