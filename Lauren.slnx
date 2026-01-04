@@ -1,5 +1,8 @@
 <Solution>
-    <Project Path="Lauren.Circuit/Lauren.Circuit.csproj"/>
-    <Project Path="Lauren.Codes/Lauren.Codes.csproj"/>
-    <Project Path="Lauren.Physics/Lauren.Physics.csproj"/>
+    <Folder Name="/Tests/">
+        <Project Path="Lauren.Physics.Tests/Lauren.Physics.Tests.csproj" />
+    </Folder>
+    <Project Path="Lauren.Circuit/Lauren.Circuit.csproj" />
+    <Project Path="Lauren.Codes/Lauren.Codes.csproj" />
+    <Project Path="Lauren.Physics/Lauren.Physics.csproj" />
 </Solution>
