@@ -37,13 +37,13 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     ///     The weight, i.e. the number of qubits this operator acts non-trivially on,
     ///     counting X and Z on the same qubit separately.
     /// </summary>
-    public int Weight => OccupiedX.Weight + OccupiedZ.Weight;
+    public int Weight => OccupiedX.Weight() + OccupiedZ.Weight();
 
     /// <summary>
     ///     The reduced weight, i.e. the number of qubits this operator acts non-trivially on,
     ///     counting X and Z on the same qubit only once.
     /// </summary>
-    public int ReducedWeight => OccupiedX.Or(OccupiedZ).Weight;
+    public int ReducedWeight => BitArray.OrWeight(OccupiedX, OccupiedZ);
 
     public bool Equals(QuantumOperator? other)
     {
@@ -53,17 +53,11 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
         if (ReferenceEquals(this, other))
             return true;
 
-        if (OccupiedX.Length != other.OccupiedX.Length ||
-            OccupiedZ.Length != other.OccupiedZ.Length)
+        if (!BitArray.ValueEquals(OccupiedX, other.OccupiedX))
             return false;
-
-        for (var i = 0; i < OccupiedX.Length; i++)
-            if (OccupiedX[i] != other.OccupiedX[i])
-                return false;
-
-        for (var i = 0; i < OccupiedZ.Length; i++)
-            if (OccupiedZ[i] != other.OccupiedZ[i])
-                return false;
+        
+        if (!BitArray.ValueEquals(OccupiedZ, other.OccupiedZ))
+            return false;
 
         return Coefficient == other.Coefficient;
     }
