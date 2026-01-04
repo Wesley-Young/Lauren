@@ -1,10 +1,13 @@
 ﻿using System.Collections;
+using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Operators;
 
 public abstract class QuantumOperator : IEquatable<QuantumOperator>
 {
-    /// <exception cref="ArgumentException">Thrown when occupiedX and occupiedZ have different lengths.</exception>
+    /// <exception cref="ArgumentException">
+    ///     Thrown when occupiedX and occupiedZ have different lengths.
+    /// </exception>
     protected QuantumOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient coefficient = Coefficient.PlusI)
     {
         if (occupiedX.Length != occupiedZ.Length)
@@ -54,17 +57,13 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
             OccupiedZ.Length != other.OccupiedZ.Length)
             return false;
 
-        for (int i = 0; i < OccupiedX.Length; i++)
-        {
+        for (var i = 0; i < OccupiedX.Length; i++)
             if (OccupiedX[i] != other.OccupiedX[i])
                 return false;
-        }
 
-        for (int i = 0; i < OccupiedZ.Length; i++)
-        {
+        for (var i = 0; i < OccupiedZ.Length; i++)
             if (OccupiedZ[i] != other.OccupiedZ[i])
                 return false;
-        }
 
         return Coefficient == other.Coefficient;
     }
@@ -77,11 +76,12 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     public BitArray ZippedOccupations()
     {
         var result = new BitArray(OccupiedX.Length * 2);
-        for (int i = 0; i < OccupiedX.Length; i++)
+        for (var i = 0; i < OccupiedX.Length; i++)
         {
             result[i * 2] = OccupiedX[i];
-            result[(i * 2) + 1] = OccupiedZ[i];
+            result[i * 2 + 1] = OccupiedZ[i];
         }
+
         return result;
     }
 
@@ -116,7 +116,13 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     /// </summary>
     public abstract QuantumOperator Clone();
 
-    public override bool Equals(object? obj) => obj is QuantumOperator other && Equals(other);
+    public override bool Equals(object? obj)
+    {
+        return obj is QuantumOperator other && Equals(other);
+    }
 
-    public override int GetHashCode() => HashCode.Combine(OccupiedX, OccupiedZ, Coefficient);
+    public override int GetHashCode()
+    {
+        return HashCode.Combine(OccupiedX, OccupiedZ, Coefficient);
+    }
 }

@@ -1,8 +1,9 @@
 ﻿using System.Numerics;
+
 #pragma warning disable CS8509 // The switch expression does not handle all possible values of its input type (it is not exhaustive).
 #pragma warning disable CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
 
-namespace Lauren.Physics;
+namespace Lauren.Physics.Operators;
 
 /// <summary>
 ///     Coefficient for quantum operations.
@@ -23,7 +24,6 @@ public static class CoefficientExtensions
         /// <summary>
         ///     Get the complex value of the coefficient.
         /// </summary>
-        /// <returns>The complex value.</returns>
         public Complex ToComplex()
         {
             return coefficient switch
@@ -39,11 +39,9 @@ public static class CoefficientExtensions
         ///     Get the coefficient raised to the given exponent.
         ///     For example, Coefficient.PlusI.Power(2) = Coefficient.MinusOne.
         /// </summary>
-        /// <param name="exponent"></param>
-        /// <returns></returns>
         public Coefficient Power(int exponent)
         {
-            int exp = exponent % 4;
+            var exp = exponent % 4;
             return (coefficient, exp) switch
             {
                 (_, 0) => Coefficient.PlusOne,

@@ -1,6 +1,6 @@
 using System.Collections;
 
-namespace Lauren.Physics;
+namespace Lauren.Physics.Utility;
 
 public static class BitArrayExtensions
 {
