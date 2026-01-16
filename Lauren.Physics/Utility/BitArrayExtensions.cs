@@ -13,29 +13,29 @@ public static class BitArrayExtensions
         /// </summary>
         public int Weight()
         {
-            if (bitArray is null) throw new ArgumentNullException(nameof(bitArray));
-            var length = bitArray.Length;
+            ArgumentNullException.ThrowIfNull(bitArray);
+            int length = bitArray.Length;
             if (length == 0) return 0;
 
-            var ints = (length + 31) >> 5; // ceil(length / 32)
-            var buf = ArrayPool<int>.Shared.Rent(ints);
+            int ints = (length + 31) >> 5; // ceil(length / 32)
+            int[] buf = ArrayPool<int>.Shared.Rent(ints);
 
             try
             {
                 bitArray.CopyTo(buf, 0);
 
-                var lastBits = length & 31; // length % 32
-                var lastIndex = ints - 1;
+                int lastBits = length & 31; // length % 32
+                int lastIndex = ints - 1;
 
                 // Mask out unused bits in the last int
                 if (lastBits != 0)
                 {
-                    var mask = (1u << lastBits) - 1u;
+                    uint mask = (1u << lastBits) - 1u;
                     buf[lastIndex] = (int)((uint)buf[lastIndex] & mask);
                 }
 
-                var sum = 0;
-                for (var i = 0; i < ints; i++) sum += BitOperations.PopCount((uint)buf[i]);
+                int sum = 0;
+                for (int i = 0; i < ints; i++) sum += BitOperations.PopCount((uint)buf[i]);
                 return sum;
             }
             finally
@@ -53,35 +53,35 @@ public static class BitArrayExtensions
         /// </exception>
         public static int OrWeight(BitArray a, BitArray b)
         {
-            var length = a.Length;
+            int length = a.Length;
             if (length != b.Length) throw new ArgumentException("BitArrays must have the same Length.");
             if (length == 0) return 0;
 
-            var ints = (length + 31) >> 5; // ceil(length / 32)
+            int ints = (length + 31) >> 5; // ceil(length / 32)
 
-            var bufA = ArrayPool<int>.Shared.Rent(ints);
-            var bufB = ArrayPool<int>.Shared.Rent(ints);
+            int[] bufA = ArrayPool<int>.Shared.Rent(ints);
+            int[] bufB = ArrayPool<int>.Shared.Rent(ints);
 
             try
             {
                 a.CopyTo(bufA, 0);
                 b.CopyTo(bufB, 0);
 
-                var lastBits = length & 31; // length % 32
-                var lastIndex = ints - 1;
+                int lastBits = length & 31; // length % 32
+                int lastIndex = ints - 1;
 
                 // Mask out unused bits in the last int, both for A and B
                 if (lastBits != 0)
                 {
-                    var mask = (1u << lastBits) - 1u;
+                    uint mask = (1u << lastBits) - 1u;
                     bufA[lastIndex] = (int)((uint)bufA[lastIndex] & mask);
                     bufB[lastIndex] = (int)((uint)bufB[lastIndex] & mask);
                 }
 
-                var sum = 0;
-                for (var i = 0; i < ints; i++)
+                int sum = 0;
+                for (int i = 0; i < ints; i++)
                 {
-                    var orBlock = (uint)bufA[i] | (uint)bufB[i];
+                    uint orBlock = (uint)bufA[i] | (uint)bufB[i];
                     sum += BitOperations.PopCount(orBlock);
                 }
 
@@ -102,24 +102,24 @@ public static class BitArrayExtensions
             if (ReferenceEquals(a, b)) return true;
             if (a is null || b is null) return false;
 
-            var length = a.Length;
+            int length = a.Length;
             if (length != b.Length) return false;
             if (length == 0) return true;
 
-            var ints = (length + 31) >> 5; // ceil(length / 32)
+            int ints = (length + 31) >> 5; // ceil(length / 32)
 
-            var poolA = ArrayPool<int>.Shared.Rent(ints);
-            var poolB = ArrayPool<int>.Shared.Rent(ints);
+            int[] poolA = ArrayPool<int>.Shared.Rent(ints);
+            int[] poolB = ArrayPool<int>.Shared.Rent(ints);
 
             try
             {
                 a.CopyTo(poolA, 0);
                 b.CopyTo(poolB, 0);
 
-                var lastBits = length & 31; // length % 32
-                var lastIndex = ints - 1;
+                int lastBits = length & 31; // length % 32
+                int lastIndex = ints - 1;
 
-                for (var i = 0; i < lastIndex; i++)
+                for (int i = 0; i < lastIndex; i++)
                     if (poolA[i] != poolB[i])
                         return false;
 
@@ -129,7 +129,7 @@ public static class BitArrayExtensions
                 }
                 else
                 {
-                    var mask = (1u << lastBits) - 1u;
+                    uint mask = (1u << lastBits) - 1u;
                     return ((uint)poolA[lastIndex] & mask) == ((uint)poolB[lastIndex] & mask);
                 }
             }

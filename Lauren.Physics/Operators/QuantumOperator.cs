@@ -70,7 +70,7 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     public BitArray ZippedOccupations()
     {
         var result = new BitArray(OccupiedX.Length * 2);
-        for (var i = 0; i < OccupiedX.Length; i++)
+        for (int i = 0; i < OccupiedX.Length; i++)
         {
             result[i * 2] = OccupiedX[i];
             result[i * 2 + 1] = OccupiedZ[i];

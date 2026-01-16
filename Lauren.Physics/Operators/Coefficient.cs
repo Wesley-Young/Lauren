@@ -59,7 +59,7 @@ public static class CoefficientExtensions
         /// </summary>
         public Coefficient Power(int exponent)
         {
-            var exp = exponent % 4;
+            int exp = exponent % 4;
             return (coefficient, exp) switch
             {
                 (_, 0) => Coefficient.PlusOne,
