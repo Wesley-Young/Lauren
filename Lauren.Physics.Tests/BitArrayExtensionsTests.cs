@@ -155,6 +155,19 @@ public class BitArrayExtensionsTests
         Assert.False(BitArray.ValueEquals(null, bits));
     }
 
+    [Theory]
+    [MemberData(nameof(ExchangeParityWithCases))]
+    public void ExchangeParityWith_ReturnsExpected(bool[] selfBits, bool[] otherBits)
+    {
+        var self = new BitArray(selfBits);
+        var other = new BitArray(otherBits);
+
+        var expected = ExchangeParityReference(self, other);
+        var actual = self.ExchangeParityWith(other);
+
+        Assert.Equal(expected, actual);
+    }
+
     private static bool BitsEqual(BitArray left, BitArray right)
     {
         if (left.Length != right.Length) return false;
@@ -164,5 +177,42 @@ public class BitArrayExtensionsTests
                 return false;
 
         return true;
+    }
+
+    public static IEnumerable<object[]> ExchangeParityWithCases()
+    {
+        yield return [Array.Empty<bool>(), Array.Empty<bool>()];
+        yield return [new[] { false, false, false }, new[] { false, false, false }];
+        yield return [new[] { true }, new[] { true }];
+        yield return [new[] { true, false, false }, new[] { false, true, false }];
+        yield return [new[] { false, false, true }, new[] { true, false, false }];
+        yield return [new[] { true, false, true, false }, new[] { true, true, false, false }];
+        yield return
+        [
+            new[] { false, true, false, false, true },
+            new[] { true, false, false, true, false }
+        ];
+        yield return [new[] { true, true, true }, new[] { true, true, true }];
+    }
+
+    /// <summary>
+    ///     A slow path reference implementation of ExchangeParityWith for testing.
+    /// </summary>
+    private static bool ExchangeParityReference(BitArray self, BitArray other)
+    {
+        int length = self.Length;
+        int count = 0;
+
+        for (int b = 0; b < length; b++)
+        {
+            if (!other[b]) continue;
+
+            for (int a = b + 1; a < length; a++)
+            {
+                if (self[a]) count++;
+            }
+        }
+
+        return (count & 1) == 1;
     }
 }
