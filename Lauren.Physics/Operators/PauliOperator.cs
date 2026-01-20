@@ -32,6 +32,16 @@ public class PauliOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient c
         return andWeight % 2 == 0 ? Coefficient.IsReal() : Coefficient.IsImaginary();
     }
 
+    public override bool CommutesWith(QuantumOperator other)
+    {
+        if (other is not PauliOperator)
+            throw new ArgumentException("Can only check commutation with another PauliOperator.", nameof(other));
+        int overlapXWithZ = BitArray.AndWeight(OccupiedX, other.OccupiedZ);
+        int overlapZWithX = BitArray.AndWeight(OccupiedZ, other.OccupiedX);
+        int totalOverlap = overlapXWithZ + overlapZWithX;
+        return totalOverlap % 2 == 0;
+    }
+
     public override PauliOperator Clone() => new ((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient);
 
     public static PauliOperator CreateHermitian(BitArray occupiedX, BitArray occupiedZ)

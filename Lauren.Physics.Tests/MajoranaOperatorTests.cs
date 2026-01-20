@@ -107,6 +107,27 @@ public class MajoranaOperatorTests
         Assert.Equal(expected, actual);
     }
 
+    [Theory]
+    [MemberData(nameof(CommutesWithCases))]
+    public void CommutesWith_ReturnsExpected(bool[] leftX, bool[] leftZ, bool[] rightX, bool[] rightZ, bool expected)
+    {
+        var left = new MajoranaOperator(new BitArray(leftX), new BitArray(leftZ), Coefficient.PlusOne);
+        var right = new MajoranaOperator(new BitArray(rightX), new BitArray(rightZ), Coefficient.PlusOne);
+
+        var actual = left.CommutesWith(right);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void CommutesWith_WrongType_Throws()
+    {
+        var left = new MajoranaOperator(new BitArray(1), new BitArray(1));
+        var right = new PauliOperator(new BitArray(1), new BitArray(1));
+
+        Assert.Throws<ArgumentException>(() => left.CommutesWith(right));
+    }
+
     [Fact]
     public void Clone_CopiesValues()
     {
@@ -139,10 +160,38 @@ public class MajoranaOperatorTests
 
     public static IEnumerable<object[]> IsHermitianCases()
     {
-        yield return new object[] { new[] { true }, new[] { false }, Coefficient.PlusOne, true };
-        yield return new object[] { new[] { true }, new[] { false }, Coefficient.PlusI, false };
-        yield return new object[] { new[] { true, true }, new[] { false, false }, Coefficient.PlusI, true };
-        yield return new object[] { new[] { true, true }, new[] { false, false }, Coefficient.PlusOne, false };
+        yield return [new[] { true }, new[] { false }, Coefficient.PlusOne, true];
+        yield return [new[] { true }, new[] { false }, Coefficient.PlusI, false];
+        yield return [new[] { true, true }, new[] { false, false }, Coefficient.PlusI, true];
+        yield return [new[] { true, true }, new[] { false, false }, Coefficient.PlusOne, false];
+    }
+
+    public static IEnumerable<object[]> CommutesWithCases()
+    {
+        yield return
+        [
+            Array.Empty<bool>(), Array.Empty<bool>(),
+            Array.Empty<bool>(), Array.Empty<bool>(),
+            true
+        ];
+        yield return
+        [
+            new[] { true }, new[] { false },
+            new[] { false }, new[] { true },
+            false
+        ];
+        yield return
+        [
+            new[] { true }, new[] { false },
+            new[] { true }, new[] { false },
+            true
+        ];
+        yield return
+        [
+            new[] { true, true }, new[] { false, false },
+            new[] { false, true }, new[] { false, false },
+            false
+        ];
     }
 
     private static bool BitsEqual(BitArray left, BitArray right)

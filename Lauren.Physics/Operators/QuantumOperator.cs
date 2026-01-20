@@ -106,6 +106,12 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     public abstract bool IsHermitian();
 
     /// <summary>
+    ///     Returns true if this quantum operator commutes with another quantum operator,
+    ///     i.e. `this @ other == other @ this`.
+    /// </summary>
+    public abstract bool CommutesWith(QuantumOperator other);
+
+    /// <summary>
     ///     Clones this quantum operator.
     /// </summary>
     public abstract QuantumOperator Clone();

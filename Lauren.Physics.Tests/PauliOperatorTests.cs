@@ -91,6 +91,27 @@ public class PauliOperatorTests
         Assert.False(evenImaginary.IsHermitian());
     }
 
+    [Theory]
+    [MemberData(nameof(CommutesWithCases))]
+    public void CommutesWith_ReturnsExpected(bool[] leftX, bool[] leftZ, bool[] rightX, bool[] rightZ, bool expected)
+    {
+        var left = new PauliOperator(new BitArray(leftX), new BitArray(leftZ), Coefficient.PlusOne);
+        var right = new PauliOperator(new BitArray(rightX), new BitArray(rightZ), Coefficient.PlusOne);
+
+        var actual = left.CommutesWith(right);
+
+        Assert.Equal(expected, actual);
+    }
+
+    [Fact]
+    public void CommutesWith_WrongType_Throws()
+    {
+        var left = new PauliOperator(new BitArray(1), new BitArray(1));
+        var right = new MajoranaOperator(new BitArray(1), new BitArray(1));
+
+        Assert.Throws<ArgumentException>(() => left.CommutesWith(right));
+    }
+
     [Fact]
     public void Clone_CopiesValues()
     {
@@ -119,6 +140,28 @@ public class PauliOperatorTests
         Assert.True(BitsEqual(occupiedZ, pauli.OccupiedZ));
         Assert.Equal(Coefficient.PlusOne, pauli.Coefficient);
         Assert.True(pauli.IsHermitian());
+    }
+
+    public static IEnumerable<object[]> CommutesWithCases()
+    {
+        yield return
+        [
+            new[] { true }, new[] { false },
+            new[] { false }, new[] { true },
+            false
+        ];
+        yield return
+        [
+            new[] { true, false }, new[] { false, false },
+            new[] { false, false }, new[] { false, true },
+            true
+        ];
+        yield return
+        [
+            new[] { true, false }, new[] { false, true },
+            new[] { false, true }, new[] { true, false },
+            true
+        ];
     }
 
     private static bool BitsEqual(BitArray left, BitArray right)

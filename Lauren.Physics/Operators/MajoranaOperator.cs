@@ -41,6 +41,17 @@ public class MajoranaOperator(BitArray occupiedX, BitArray occupiedZ, Coefficien
         return selfWeight * (selfWeight - 1) / 2 % 2 == 0 ? Coefficient.IsReal() : Coefficient.IsImaginary();
     }
 
+    public override bool CommutesWith(QuantumOperator other)
+    {
+        if (other is not MajoranaOperator)
+            throw new ArgumentException("Can only check commutation with another MajoranaOperator.", nameof(other));
+        int overlapX = BitArray.AndWeight(OccupiedX, other.OccupiedX);
+        int overlapZ = BitArray.AndWeight(OccupiedZ, other.OccupiedZ);
+        int weightProduct = Weight * other.Weight;
+        int totalOverlap = overlapX + overlapZ + weightProduct;
+        return totalOverlap % 2 == 0;
+    }
+
     public override MajoranaOperator Clone() =>
         new((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient);
 
