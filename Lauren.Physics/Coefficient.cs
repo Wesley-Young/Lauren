@@ -3,7 +3,7 @@
 #pragma warning disable CS8509 // The switch expression does not handle all possible values of its input type (it is not exhaustive).
 #pragma warning disable CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
 
-namespace Lauren.Physics.Operators;
+namespace Lauren.Physics;
 
 /// <summary>
 ///     Coefficient for quantum operations.
