@@ -100,5 +100,21 @@ public static class CoefficientExtensions
                 (Coefficient.MinusI, Coefficient.MinusI) => Coefficient.MinusOne
             };
         }
+
+        /// <summary>
+        ///     Check if the coefficient is real (i.e., +1 or -1).
+        /// </summary>
+        public bool IsReal()
+        {
+            return coefficient is Coefficient.PlusOne or Coefficient.MinusOne;
+        }
+
+        /// <summary>
+        ///     Check if the coefficient is imaginary (i.e., +i or -i).
+        /// </summary>
+        public bool IsImaginary()
+        {
+            return coefficient is Coefficient.PlusI or Coefficient.MinusI;
+        }
     }
 }
