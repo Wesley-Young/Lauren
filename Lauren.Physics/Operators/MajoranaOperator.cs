@@ -43,4 +43,11 @@ public class MajoranaOperator(BitArray occupiedX, BitArray occupiedZ, Coefficien
 
     public override MajoranaOperator Clone() =>
         new((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient);
+
+    public static MajoranaOperator CreateHermitian(BitArray occupiedX, BitArray occupiedZ)
+    {
+        int weight = occupiedX.Weight() + occupiedZ.Weight();
+        var coefficient = weight * (weight - 1) / 2 % 2 == 0 ? Coefficient.PlusOne : Coefficient.PlusI;
+        return new MajoranaOperator(occupiedX, occupiedZ, coefficient);
+    }
 }

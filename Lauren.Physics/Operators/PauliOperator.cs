@@ -33,4 +33,11 @@ public class PauliOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient c
     }
 
     public override PauliOperator Clone() => new ((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient);
+
+    public static PauliOperator CreateHermitian(BitArray occupiedX, BitArray occupiedZ)
+    {
+        int andWeight = BitArray.AndWeight(occupiedX, occupiedZ);
+        var coefficient = andWeight % 2 == 0 ? Coefficient.PlusOne : Coefficient.PlusI;
+        return new PauliOperator(occupiedX, occupiedZ, coefficient);
+    }
 }

@@ -124,6 +124,19 @@ public class MajoranaOperatorTests
         Assert.False(ReferenceEquals(op.OccupiedZ, majorana.OccupiedZ));
     }
 
+    [Fact]
+    public void CreateHermitian_SetsCorrectCoefficient_AndReturnsHermitianOperator()
+    {
+        var occupiedX = new BitArray(2) { [0] = true };
+        var occupiedZ = new BitArray(2) { [1] = true };
+        var hermitianOp = MajoranaOperator.CreateHermitian(occupiedX, occupiedZ);
+        var majorana = Assert.IsType<MajoranaOperator>(hermitianOp);
+        Assert.True(BitsEqual(occupiedX, majorana.OccupiedX));
+        Assert.True(BitsEqual(occupiedZ, majorana.OccupiedZ));
+        Assert.Equal(Coefficient.PlusI, majorana.Coefficient);
+        Assert.True(majorana.IsHermitian());
+    }
+
     public static IEnumerable<object[]> IsHermitianCases()
     {
         yield return new object[] { new[] { true }, new[] { false }, Coefficient.PlusOne, true };

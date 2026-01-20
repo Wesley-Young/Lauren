@@ -108,6 +108,19 @@ public class PauliOperatorTests
         Assert.False(ReferenceEquals(op.OccupiedZ, pauli.OccupiedZ));
     }
 
+    [Fact]
+    public void CreateHermitian_SetsCorrectCoefficient_AndReturnsHermitianOperator()
+    {
+        var occupiedX = new BitArray(2) { [0] = true };
+        var occupiedZ = new BitArray(2) { [1] = true };
+        var hermitianOp = PauliOperator.CreateHermitian(occupiedX, occupiedZ);
+        var pauli = Assert.IsType<PauliOperator>(hermitianOp);
+        Assert.True(BitsEqual(occupiedX, pauli.OccupiedX));
+        Assert.True(BitsEqual(occupiedZ, pauli.OccupiedZ));
+        Assert.Equal(Coefficient.PlusOne, pauli.Coefficient);
+        Assert.True(pauli.IsHermitian());
+    }
+
     private static bool BitsEqual(BitArray left, BitArray right)
     {
         if (left.Length != right.Length) return false;
