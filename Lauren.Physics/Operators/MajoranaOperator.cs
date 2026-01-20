@@ -13,6 +13,9 @@ public class MajoranaOperator(BitArray occupiedX, BitArray occupiedZ, Coefficien
 {
     public override MajoranaOperator Multiply(QuantumOperator other)
     {
+        if (other is not MajoranaOperator)
+            throw new ArgumentException("Can only multiply MajoranaOperator by another MajoranaOperator.", nameof(other));
+
         var newOccupiedX = ((BitArray)OccupiedX.Clone()).Xor(other.OccupiedX);
         var newOccupiedZ = ((BitArray)OccupiedZ.Clone()).Xor(other.OccupiedZ);
 
