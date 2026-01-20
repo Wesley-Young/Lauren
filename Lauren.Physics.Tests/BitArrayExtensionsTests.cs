@@ -70,6 +70,42 @@ public class BitArrayExtensionsTests
     }
 
     [Fact]
+    public void AndWeight_LengthMismatch_Throws()
+    {
+        var left = new BitArray(5);
+        var right = new BitArray(6);
+
+        Assert.Throws<ArgumentException>(() => BitArray.AndWeight(left, right));
+    }
+
+    [Fact]
+    public void AndWeight_ReturnsExpectedCount_AndDoesNotMutateInputs()
+    {
+        var left = new BitArray(10)
+        {
+            [0] = true,
+            [1] = true,
+            [9] = true
+        };
+
+        var right = new BitArray(10)
+        {
+            [1] = true,
+            [2] = true,
+            [9] = true
+        };
+
+        var leftCopy = new BitArray(left);
+        var rightCopy = new BitArray(right);
+
+        var weight = BitArray.AndWeight(left, right);
+
+        Assert.Equal(2, weight);
+        Assert.True(BitsEqual(left, leftCopy));
+        Assert.True(BitsEqual(right, rightCopy));
+    }
+
+    [Fact]
     public void ValueEquals_BothNull_ReturnsTrue()
     {
         Assert.True(BitArray.ValueEquals(null, null));

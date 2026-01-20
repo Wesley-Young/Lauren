@@ -95,6 +95,56 @@ public static class BitArrayExtensions
         }
 
         /// <summary>
+        ///     Calculate the weight of the bitwise AND of two BitArrays
+        ///     without allocating a new BitArray or modifying the inputs.
+        /// </summary>
+        /// <exception cref="ArgumentException">
+        ///     Thrown when a and b have different lengths.
+        /// </exception>
+        public static int AndWeight(BitArray a, BitArray b)
+        {
+            int length = a.Length;
+            if (length != b.Length) throw new ArgumentException("BitArrays must have the same Length.");
+            if (length == 0) return 0;
+
+            int ints = (length + 31) >> 5; // ceil(length / 32)
+
+            int[] bufA = ArrayPool<int>.Shared.Rent(ints);
+            int[] bufB = ArrayPool<int>.Shared.Rent(ints);
+
+            try
+            {
+                a.CopyTo(bufA, 0);
+                b.CopyTo(bufB, 0);
+
+                int lastBits = length & 31; // length % 32
+                int lastIndex = ints - 1;
+
+                // Mask out unused bits in the last int, both for A and B
+                if (lastBits != 0)
+                {
+                    uint mask = (1u << lastBits) - 1u;
+                    bufA[lastIndex] = (int)((uint)bufA[lastIndex] & mask);
+                    bufB[lastIndex] = (int)((uint)bufB[lastIndex] & mask);
+                }
+
+                int sum = 0;
+                for (int i = 0; i < ints; i++)
+                {
+                    uint andBlock = (uint)bufA[i] & (uint)bufB[i];
+                    sum += BitOperations.PopCount(andBlock);
+                }
+
+                return sum;
+            }
+            finally
+            {
+                ArrayPool<int>.Shared.Return(bufA);
+                ArrayPool<int>.Shared.Return(bufB);
+            }
+        }
+
+        /// <summary>
         ///     Compare two BitArrays for value equality.
         /// </summary>
         public static bool ValueEquals(BitArray? a, BitArray? b)
