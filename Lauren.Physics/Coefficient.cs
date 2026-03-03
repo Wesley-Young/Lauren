@@ -1,8 +1,5 @@
 ﻿using System.Numerics;
 
-#pragma warning disable CS8509 // The switch expression does not handle all possible values of its input type (it is not exhaustive).
-#pragma warning disable CS8524 // The switch expression does not handle some values of its input type (it is not exhaustive) involving an unnamed enum value.
-
 namespace Lauren.Physics;
 
 /// <summary>
@@ -19,21 +16,49 @@ public enum Coefficient
 
 public static class CoefficientExtensions
 {
+    private static int ToIndex(Coefficient value)
+    {
+        int index = (int)value;
+        if ((uint)index >= 4u)
+        {
+            throw new ArgumentOutOfRangeException(nameof(value), "Invalid coefficient value.");
+        }
+
+        return index;
+    }
+
+    private static readonly Complex[] ComplexByCoefficient =
+    [
+        new(1, 0),
+        new(-1, 0),
+        new(0, 1),
+        new(0, -1)
+    ];
+
+    // Index: (base << 2) | exponentMod4
+    private static readonly Coefficient[] PowerTable =
+    [
+        Coefficient.PlusOne, Coefficient.PlusOne, Coefficient.PlusOne, Coefficient.PlusOne,
+        Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusOne,
+        Coefficient.PlusOne, Coefficient.PlusI, Coefficient.MinusOne, Coefficient.MinusI,
+        Coefficient.PlusOne, Coefficient.MinusI, Coefficient.MinusOne, Coefficient.PlusI
+    ];
+
+    // Index: (left << 2) | right
+    private static readonly Coefficient[] MultiplyTable =
+    [
+        Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.PlusI, Coefficient.MinusI,
+        Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusI, Coefficient.PlusI,
+        Coefficient.PlusI, Coefficient.MinusI, Coefficient.MinusOne, Coefficient.PlusOne,
+        Coefficient.MinusI, Coefficient.PlusI, Coefficient.PlusOne, Coefficient.MinusOne
+    ];
+
     extension(Coefficient coefficient)
     {
         /// <summary>
         ///     Get the complex value of the coefficient.
         /// </summary>
-        public Complex ToComplex()
-        {
-            return coefficient switch
-            {
-                Coefficient.PlusOne => new Complex(1, 0),
-                Coefficient.MinusOne => new Complex(-1, 0),
-                Coefficient.PlusI => new Complex(0, 1),
-                Coefficient.MinusI => new Complex(0, -1)
-            };
-        }
+        public Complex ToComplex() => ComplexByCoefficient[ToIndex(coefficient)];
         
         /// <summary>
         ///     Return the Coefficient corresponding to the given complex number.
@@ -59,62 +84,24 @@ public static class CoefficientExtensions
         /// </summary>
         public Coefficient Power(int exponent)
         {
-            int exp = exponent % 4;
-            return (coefficient, exp) switch
-            {
-                (_, 0) => Coefficient.PlusOne,
-                (Coefficient.PlusOne, 1) => Coefficient.PlusOne,
-                (Coefficient.MinusOne, 1) => Coefficient.MinusOne,
-                (Coefficient.PlusI, 1) => Coefficient.PlusI,
-                (Coefficient.MinusI, 1) => Coefficient.MinusI,
-                (Coefficient.PlusOne, 2) => Coefficient.PlusOne,
-                (Coefficient.MinusOne, 2) => Coefficient.PlusOne,
-                (Coefficient.PlusI, 2) => Coefficient.MinusOne,
-                (Coefficient.MinusI, 2) => Coefficient.MinusOne,
-                (Coefficient.PlusOne, 3) => Coefficient.PlusOne,
-                (Coefficient.MinusOne, 3) => Coefficient.MinusOne,
-                (Coefficient.PlusI, 3) => Coefficient.MinusI,
-                (Coefficient.MinusI, 3) => Coefficient.PlusI
-            };
+            int normalizedExponent = exponent & 0b11;
+            return PowerTable[(ToIndex(coefficient) << 2) | normalizedExponent];
         }
 
         /// <summary>
         ///     Multiply two coefficients together.
         /// </summary>
-        public static Coefficient operator *(Coefficient a, Coefficient b)
-        {
-            return (a, b) switch
-            {
-                (Coefficient.PlusOne, _) => b,
-                (Coefficient.MinusOne, Coefficient.PlusOne) => Coefficient.MinusOne,
-                (Coefficient.MinusOne, Coefficient.MinusOne) => Coefficient.PlusOne,
-                (Coefficient.MinusOne, Coefficient.PlusI) => Coefficient.MinusI,
-                (Coefficient.MinusOne, Coefficient.MinusI) => Coefficient.PlusI,
-                (Coefficient.PlusI, Coefficient.PlusOne) => Coefficient.PlusI,
-                (Coefficient.PlusI, Coefficient.MinusOne) => Coefficient.MinusI,
-                (Coefficient.PlusI, Coefficient.PlusI) => Coefficient.MinusOne,
-                (Coefficient.PlusI, Coefficient.MinusI) => Coefficient.PlusOne,
-                (Coefficient.MinusI, Coefficient.PlusOne) => Coefficient.MinusI,
-                (Coefficient.MinusI, Coefficient.MinusOne) => Coefficient.PlusI,
-                (Coefficient.MinusI, Coefficient.PlusI) => Coefficient.PlusOne,
-                (Coefficient.MinusI, Coefficient.MinusI) => Coefficient.MinusOne
-            };
-        }
+        public static Coefficient operator *(Coefficient a, Coefficient b) =>
+            MultiplyTable[(ToIndex(a) << 2) | ToIndex(b)];
 
         /// <summary>
         ///     Check if the coefficient is real (i.e., +1 or -1).
         /// </summary>
-        public bool IsReal()
-        {
-            return coefficient is Coefficient.PlusOne or Coefficient.MinusOne;
-        }
+        public bool IsReal() => ToIndex(coefficient) <= 1;
 
         /// <summary>
         ///     Check if the coefficient is imaginary (i.e., +i or -i).
         /// </summary>
-        public bool IsImaginary()
-        {
-            return coefficient is Coefficient.PlusI or Coefficient.MinusI;
-        }
+        public bool IsImaginary() => ToIndex(coefficient) >= 2;
     }
 }
