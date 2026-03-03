@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using Lauren.Physics.Operators;
-using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Platforms;
 
@@ -10,7 +9,7 @@ namespace Lauren.Physics.Platforms;
 /// </summary>
 public class Platform
 {
-    private readonly Stabilizer[] _allStabilizers;
+    private readonly PlatformStateFrame _state;
 
     /// <summary>
     ///     Construct a platform with given numbers of Pauli qubits and Majorana fermi sites trapped.
@@ -19,65 +18,41 @@ public class Platform
     /// <param name="majoranaCount">The number of Majorana fermi sites to trap.</param>
     public Platform(int pauliCount, int majoranaCount)
     {
-        PauliStabilizers = new Stabilizer[pauliCount];
+        if (pauliCount < 0) throw new ArgumentOutOfRangeException(nameof(pauliCount));
+        if (majoranaCount < 0) throw new ArgumentOutOfRangeException(nameof(majoranaCount));
+
+        PauliCount = pauliCount;
+        MajoranaCount = majoranaCount;
+
+        _state = new PlatformStateFrame(
+            pauliCount + majoranaCount,
+            2 * pauliCount,
+            2 * majoranaCount);
+
         for (int i = 0; i < pauliCount; i++)
         {
-            PauliStabilizers[i] = new Stabilizer
-            {
-                Coefficient = Coefficient.PlusOne,
-                Qubits = new BitArray(2 * pauliCount)
-                {
-                    [(2 * i) + 1] = true
-                },
-                FermiSites = new BitArray(2 * majoranaCount)
-            };
+            _state.Coefficients[i] = Coefficient.PlusOne;
+            _state.QubitRows[i][(2 * i) + 1] = true;
         }
 
-        MajoranaStabilizers = new Stabilizer[majoranaCount];
         for (int i = 0; i < majoranaCount; i++)
         {
-            MajoranaStabilizers[i] = new Stabilizer
-            {
-                Coefficient = Coefficient.PlusI,
-                Qubits = new BitArray(2 * pauliCount),
-                FermiSites = new BitArray(2 * majoranaCount)
-                {
-                    [2 * i] = true,
-                    [(2 * i) + 1] = true
-                }
-            };
-        }
-
-        _allStabilizers = new Stabilizer[pauliCount + majoranaCount];
-        for (int i = 0; i < pauliCount; i++)
-        {
-            _allStabilizers[i] = PauliStabilizers[i];
-        }
-        for (int i = 0; i < majoranaCount; i++)
-        {
-            _allStabilizers[pauliCount + i] = MajoranaStabilizers[i];
+            int row = pauliCount + i;
+            _state.Coefficients[row] = Coefficient.PlusI;
+            _state.FermiRows[row][2 * i] = true;
+            _state.FermiRows[row][(2 * i) + 1] = true;
         }
     }
 
     /// <summary>
-    ///     Pauli stabilizers defining the platform.
-    /// </summary>
-    public Stabilizer[] PauliStabilizers { get; }
-
-    /// <summary>
-    ///     Majorana stabilizers defining the platform.
-    /// </summary>
-    public Stabilizer[] MajoranaStabilizers { get; }
-
-    /// <summary>
     ///     Count of Pauli qubits in the platform.
     /// </summary>
-    public int PauliCount => PauliStabilizers.Length;
+    public int PauliCount { get; }
 
     /// <summary>
     ///     Count of Fermi sites in the platform.
     /// </summary>
-    public int MajoranaCount => MajoranaStabilizers.Length;
+    public int MajoranaCount { get; }
 
     /// <summary>
     ///     Apply Pauli-X gate on a Pauli qubit.
@@ -87,13 +62,14 @@ public class Platform
         ValidatePauliQubitIndex(qubitIndex);
 
         int zColumn = (2 * qubitIndex) + 1;
-        foreach (var t in _allStabilizers)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            if (t.Qubits[zColumn])
+            if (_state.QubitRows[i][zColumn])
             {
-                t.Coefficient *= Coefficient.MinusOne;
+                _state.Coefficients[i] *= Coefficient.MinusOne;
             }
         }
+
     }
 
     /// <summary>
@@ -105,17 +81,18 @@ public class Platform
 
         int xColumn = 2 * qubitIndex;
         int zColumn = xColumn + 1;
-        foreach (var t in _allStabilizers)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            if (t.Qubits[zColumn])
+            if (_state.QubitRows[i][zColumn])
             {
-                t.Coefficient *= Coefficient.MinusOne;
+                _state.Coefficients[i] *= Coefficient.MinusOne;
             }
-            if (t.Qubits[xColumn])
+            if (_state.QubitRows[i][xColumn])
             {
-                t.Coefficient *= Coefficient.MinusOne;
+                _state.Coefficients[i] *= Coefficient.MinusOne;
             }
         }
+
     }
 
     /// <summary>
@@ -126,13 +103,14 @@ public class Platform
         ValidatePauliQubitIndex(qubitIndex);
 
         int xColumn = 2 * qubitIndex;
-        foreach (var t in _allStabilizers)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            if (t.Qubits[xColumn])
+            if (_state.QubitRows[i][xColumn])
             {
-                t.Coefficient *= Coefficient.MinusOne;
+                _state.Coefficients[i] *= Coefficient.MinusOne;
             }
         }
+
     }
 
     /// <summary>
@@ -144,18 +122,19 @@ public class Platform
 
         int xColumn = 2 * qubitIndex;
         int zColumn = xColumn + 1;
-        foreach (var t in _allStabilizers)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool xOccupied = t.Qubits[xColumn];
-            bool zOccupied = t.Qubits[zColumn];
+            bool xOccupied = _state.QubitRows[i][xColumn];
+            bool zOccupied = _state.QubitRows[i][zColumn];
             if (xOccupied && zOccupied)
             {
-                t.Coefficient *= Coefficient.MinusOne;
+                _state.Coefficients[i] *= Coefficient.MinusOne;
             }
 
-            t.Qubits[xColumn] = zOccupied;
-            t.Qubits[zColumn] = xOccupied;
+            _state.QubitRows[i][xColumn] = zOccupied;
+            _state.QubitRows[i][zColumn] = xOccupied;
         }
+
     }
 
     /// <summary>
@@ -167,16 +146,17 @@ public class Platform
 
         int xColumn = 2 * qubitIndex;
         int zColumn = xColumn + 1;
-        foreach (var t in _allStabilizers)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool xOccupied = t.Qubits[xColumn];
+            bool xOccupied = _state.QubitRows[i][xColumn];
             if (xOccupied)
             {
-                t.Coefficient *= Coefficient.PlusI;
+                _state.Coefficients[i] *= Coefficient.PlusI;
             }
 
-            t.Qubits[zColumn] ^= xOccupied;
+            _state.QubitRows[i][zColumn] ^= xOccupied;
         }
+
     }
 
     /// <summary>
@@ -201,12 +181,43 @@ public class Platform
             throw new ArgumentException("Measurement operator must be Hermitian.");
         }
 
-        var measurement = StabilizerMeasurementUtility.BuildMeasurementStabilizer(op, PauliCount, MajoranaCount);
+        (Coefficient Coefficient, BitArray Qubits, BitArray FermiSites) measurement;
+        switch (op)
+        {
+            case PauliOperator pauli:
+                if (pauli.OccupiedX.Length != PauliCount)
+                {
+                    throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.");
+                }
+
+                measurement = (
+                    pauli.Coefficient,
+                    pauli.ZippedOccupations(),
+                    new BitArray(2 * MajoranaCount));
+                break;
+
+            case MajoranaOperator majorana:
+                if (majorana.OccupiedX.Length != MajoranaCount)
+                {
+                    throw new ArgumentException("Majorana operator size does not match platform Majorana site count.");
+                }
+
+                measurement = (
+                    majorana.Coefficient,
+                    new BitArray(2 * PauliCount),
+                    majorana.ZippedOccupations());
+                break;
+
+            default:
+                throw new ArgumentException(
+                    "Measurement operator must be either PauliOperator or MajoranaOperator.",
+                    nameof(op));
+        }
 
         int firstAnticommutingIndex = -1;
-        for (int i = 0; i < _allStabilizers.Length; i++)
+        for (int i = 0; i < _state.TotalRows; i++)
         {
-            if (_allStabilizers[i].CommutesWith(measurement))
+            if (_state.Commutes(i, measurement.Qubits, measurement.FermiSites))
             {
                 continue;
             }
@@ -217,31 +228,32 @@ public class Platform
                 continue;
             }
 
-            _allStabilizers[i].MultiplyInPlace(_allStabilizers[firstAnticommutingIndex]);
+            _state.MultiplyRowInPlace(i, firstAnticommutingIndex);
         }
 
         // Yield a random outcome if there is an anti-commuting stabilizer, and collapse the state accordingly.
         if (firstAnticommutingIndex != -1)
         {
             bool isPlusOutcome = Random.Shared.NextDouble() < 0.5;
-            var collapsed = new Stabilizer
-            {
-                Coefficient = isPlusOutcome ? measurement.Coefficient : measurement.Coefficient * Coefficient.MinusOne,
-                Qubits = (BitArray)measurement.Qubits.Clone(),
-                FermiSites = (BitArray)measurement.FermiSites.Clone()
-            };
-            _allStabilizers[firstAnticommutingIndex].OverwriteWith(collapsed);
+            var coefficient = isPlusOutcome
+                ? measurement.Coefficient
+                : measurement.Coefficient * Coefficient.MinusOne;
+            _state.OverwriteRow(
+                firstAnticommutingIndex,
+                measurement.Qubits,
+                measurement.FermiSites,
+                coefficient);
             return isPlusOutcome ? 1 : -1;
         }
 
         // If all stabilizers commute with the measurement, the outcome is deterministic, and we can solve for it.
-        if (!StabilizerMeasurementUtility.TrySolveSpan(_allStabilizers, measurement, out bool[] solution))
+        if (!_state.TrySolveSpan(measurement.Qubits, measurement.FermiSites, out bool[] solution))
         {
             throw new InvalidOperationException("Measured operator is not in the span of current stabilizers.");
         }
 
-        var evaluated = StabilizerMeasurementUtility.MultiplySelected(_allStabilizers, solution);
-        return evaluated.Coefficient == measurement.Coefficient ? 1 : -1;
+        var evaluatedCoefficient = _state.MultiplySelectedCoefficient(solution);
+        return evaluatedCoefficient == measurement.Coefficient ? 1 : -1;
     }
 
     private void ValidatePauliQubitIndex(int qubitIndex)
