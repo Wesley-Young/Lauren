@@ -46,14 +46,14 @@ public class Platform
             };
         }
 
-        AllStabilizers = new Stabilizer[pauliCount + majoranaCount];
+        _allStabilizers = new Stabilizer[pauliCount + majoranaCount];
         for (int i = 0; i < pauliCount; i++)
         {
-            AllStabilizers[i] = PauliStabilizers[i];
+            _allStabilizers[i] = PauliStabilizers[i];
         }
         for (int i = 0; i < majoranaCount; i++)
         {
-            AllStabilizers[pauliCount + i] = MajoranaStabilizers[i];
+            _allStabilizers[pauliCount + i] = MajoranaStabilizers[i];
         }
     }
     /// <summary>
@@ -76,7 +76,7 @@ public class Platform
     /// </summary>
     public int MajoranaCount => MajoranaStabilizers.Length;
 
-    private Stabilizer[] AllStabilizers;
+    private readonly Stabilizer[] _allStabilizers;
 
     /// <summary>
     ///     Measure a Hermitian operator on the platform.
@@ -103,9 +103,9 @@ public class Platform
         var measurement = StabilizerMeasurementUtility.BuildMeasurementStabilizer(op, PauliCount, MajoranaCount);
 
         int firstAnticommutingIndex = -1;
-        for (int i = 0; i < AllStabilizers.Length; i++)
+        for (int i = 0; i < _allStabilizers.Length; i++)
         {
-            if (AllStabilizers[i].CommutesWith(measurement))
+            if (_allStabilizers[i].CommutesWith(measurement))
             {
                 continue;
             }
@@ -116,7 +116,7 @@ public class Platform
                 continue;
             }
 
-            AllStabilizers[i].MultiplyInPlace(AllStabilizers[firstAnticommutingIndex]);
+            _allStabilizers[i].MultiplyInPlace(_allStabilizers[firstAnticommutingIndex]);
         }
 
         // Yield a random outcome if there is an anti-commuting stabilizer, and collapse the state accordingly.
@@ -129,17 +129,17 @@ public class Platform
                 Qubits = (BitArray)measurement.Qubits.Clone(),
                 FermiSites = (BitArray)measurement.FermiSites.Clone()
             };
-            AllStabilizers[firstAnticommutingIndex].OverwriteWith(collapsed);
+            _allStabilizers[firstAnticommutingIndex].OverwriteWith(collapsed);
             return isPlusOutcome ? 1 : -1;
         }
 
         // If all stabilizers commute with the measurement, the outcome is deterministic, and we can solve for it.
-        if (!StabilizerMeasurementUtility.TrySolveSpan(AllStabilizers, measurement, out bool[] solution))
+        if (!StabilizerMeasurementUtility.TrySolveSpan(_allStabilizers, measurement, out bool[] solution))
         {
             throw new InvalidOperationException("Measured operator is not in the span of current stabilizers.");
         }
 
-        var evaluated = StabilizerMeasurementUtility.MultiplySelected(AllStabilizers, solution);
+        var evaluated = StabilizerMeasurementUtility.MultiplySelected(_allStabilizers, solution);
         return evaluated.Coefficient == measurement.Coefficient ? 1 : -1;
     }
 }
