@@ -90,6 +90,77 @@ public class PlatformTests
         Assert.Equal(expectedCoefficient, platform.MajoranaStabilizers[0].Coefficient);
     }
 
+    [Fact]
+    public void X_OnFreshPauliQubit_FlipsStabilizerSign()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+
+        platform.X(0);
+
+        Assert.Equal(Coefficient.MinusOne, platform.PauliStabilizers[0].Coefficient);
+        Assert.True(BitsEqual(platform.PauliStabilizers[0].Qubits, new BitArray(2) { [1] = true }));
+    }
+
+    [Fact]
+    public void Y_OnFreshPauliQubit_FlipsStabilizerSign()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+
+        platform.Y(0);
+
+        Assert.Equal(Coefficient.MinusOne, platform.PauliStabilizers[0].Coefficient);
+        Assert.True(BitsEqual(platform.PauliStabilizers[0].Qubits, new BitArray(2) { [1] = true }));
+    }
+
+    [Fact]
+    public void Z_OnXStabilizer_FlipsStabilizerSign()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+        platform.PauliStabilizers[0].Qubits[0] = true;
+        platform.PauliStabilizers[0].Qubits[1] = false;
+
+        platform.Z(0);
+
+        Assert.Equal(Coefficient.MinusOne, platform.PauliStabilizers[0].Coefficient);
+        Assert.True(BitsEqual(platform.PauliStabilizers[0].Qubits, new BitArray(2) { [0] = true }));
+    }
+
+    [Fact]
+    public void H_OnZStabilizer_MapsToX()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+
+        platform.H(0);
+
+        Assert.Equal(Coefficient.PlusOne, platform.PauliStabilizers[0].Coefficient);
+        Assert.True(BitsEqual(platform.PauliStabilizers[0].Qubits, new BitArray(2) { [0] = true }));
+    }
+
+    [Fact]
+    public void S_OnXStabilizer_MapsToXZAndAddsIPhase()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+        platform.PauliStabilizers[0].Qubits[0] = true;
+        platform.PauliStabilizers[0].Qubits[1] = false;
+
+        platform.S(0);
+
+        Assert.Equal(Coefficient.PlusI, platform.PauliStabilizers[0].Coefficient);
+        Assert.True(BitsEqual(platform.PauliStabilizers[0].Qubits, new BitArray(2) { [0] = true, [1] = true }));
+    }
+
+    [Fact]
+    public void SingleQubitGates_OutOfRange_Throws()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.X(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.Y(1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.Z(2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.H(3));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.S(4));
+    }
+
     private static bool BitsEqual(BitArray left, BitArray right)
     {
         if (left.Length != right.Length) return false;

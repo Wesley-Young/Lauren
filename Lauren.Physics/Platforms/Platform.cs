@@ -10,6 +10,8 @@ namespace Lauren.Physics.Platforms;
 /// </summary>
 public class Platform
 {
+    private readonly Stabilizer[] _allStabilizers;
+
     /// <summary>
     ///     Construct a platform with given numbers of Pauli qubits and Majorana fermi sites trapped.
     /// </summary>
@@ -56,6 +58,7 @@ public class Platform
             _allStabilizers[pauliCount + i] = MajoranaStabilizers[i];
         }
     }
+
     /// <summary>
     ///     Pauli stabilizers defining the platform.
     /// </summary>
@@ -76,7 +79,105 @@ public class Platform
     /// </summary>
     public int MajoranaCount => MajoranaStabilizers.Length;
 
-    private readonly Stabilizer[] _allStabilizers;
+    /// <summary>
+    ///     Apply Pauli-X gate on a Pauli qubit.
+    /// </summary>
+    public void X(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        int zColumn = (2 * qubitIndex) + 1;
+        foreach (var t in _allStabilizers)
+        {
+            if (t.Qubits[zColumn])
+            {
+                t.Coefficient *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply Pauli-Y gate on a Pauli qubit.
+    /// </summary>
+    public void Y(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        int xColumn = 2 * qubitIndex;
+        int zColumn = xColumn + 1;
+        foreach (var t in _allStabilizers)
+        {
+            if (t.Qubits[zColumn])
+            {
+                t.Coefficient *= Coefficient.MinusOne;
+            }
+            if (t.Qubits[xColumn])
+            {
+                t.Coefficient *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply Pauli-Z gate on a Pauli qubit.
+    /// </summary>
+    public void Z(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        int xColumn = 2 * qubitIndex;
+        foreach (var t in _allStabilizers)
+        {
+            if (t.Qubits[xColumn])
+            {
+                t.Coefficient *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply Hadamard gate on a Pauli qubit.
+    /// </summary>
+    public void H(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        int xColumn = 2 * qubitIndex;
+        int zColumn = xColumn + 1;
+        foreach (var t in _allStabilizers)
+        {
+            bool xOccupied = t.Qubits[xColumn];
+            bool zOccupied = t.Qubits[zColumn];
+            if (xOccupied && zOccupied)
+            {
+                t.Coefficient *= Coefficient.MinusOne;
+            }
+
+            t.Qubits[xColumn] = zOccupied;
+            t.Qubits[zColumn] = xOccupied;
+        }
+    }
+
+    /// <summary>
+    ///     Apply S phase gate on a Pauli qubit.
+    /// </summary>
+    public void S(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        int xColumn = 2 * qubitIndex;
+        int zColumn = xColumn + 1;
+        foreach (var t in _allStabilizers)
+        {
+            bool xOccupied = t.Qubits[xColumn];
+            if (xOccupied)
+            {
+                t.Coefficient *= Coefficient.PlusI;
+            }
+
+            t.Qubits[zColumn] ^= xOccupied;
+        }
+    }
 
     /// <summary>
     ///     Measure a Hermitian operator on the platform.
@@ -141,5 +242,13 @@ public class Platform
 
         var evaluated = StabilizerMeasurementUtility.MultiplySelected(_allStabilizers, solution);
         return evaluated.Coefficient == measurement.Coefficient ? 1 : -1;
+    }
+
+    private void ValidatePauliQubitIndex(int qubitIndex)
+    {
+        if (qubitIndex < 0 || qubitIndex >= PauliCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(qubitIndex), "Qubit index is out of range.");
+        }
     }
 }
