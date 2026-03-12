@@ -82,6 +82,54 @@ public class PlatformTests
     }
 
     [Fact]
+    public void U_OnMeasuredGamma_FlipsGammaEigenvalue()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 1);
+
+        int first = platform.Measure(MajoranaGamma(1, 0));
+        platform.U(0);
+        int second = platform.Measure(MajoranaGamma(1, 0));
+
+        Assert.Equal(-first, second);
+    }
+
+    [Fact]
+    public void V_OnMeasuredGammaPrime_FlipsGammaPrimeEigenvalue()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 1);
+
+        int first = platform.Measure(MajoranaGammaPrime(1, 0));
+        platform.V(0);
+        int second = platform.Measure(MajoranaGammaPrime(1, 0));
+
+        Assert.Equal(-first, second);
+    }
+
+    [Fact]
+    public void N_OnOddRemoteGamma_FlipsRemoteGammaEigenvalue()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 2);
+
+        int first = platform.Measure(MajoranaGamma(2, 1));
+        platform.N(0);
+        int second = platform.Measure(MajoranaGamma(2, 1));
+
+        Assert.Equal(-first, second);
+    }
+
+    [Fact]
+    public void P_OnMeasuredGamma_MapsToGammaPrime()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 1);
+
+        int first = platform.Measure(MajoranaGamma(1, 0));
+        platform.P(0);
+        int second = platform.Measure(MajoranaGammaPrime(1, 0));
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
     public void X_OnFreshPauliQubit_FlipsZEigenvalue()
     {
         var platform = new Platform(pauliCount: 1, majoranaCount: 0);
@@ -143,6 +191,17 @@ public class PlatformTests
         Assert.Throws<ArgumentOutOfRangeException>(() => platform.Z(2));
         Assert.Throws<ArgumentOutOfRangeException>(() => platform.H(3));
         Assert.Throws<ArgumentOutOfRangeException>(() => platform.S(4));
+    }
+
+    [Fact]
+    public void SingleMajoranaGates_OutOfRange_Throws()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 1);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.U(-1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.V(1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.N(2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.P(3));
     }
 
     [Fact]
@@ -217,6 +276,13 @@ public class PlatformTests
         var x = new BitArray(count);
         x[index] = true;
         return new MajoranaOperator(x, new BitArray(count), Coefficient.PlusOne);
+    }
+
+    private static MajoranaOperator MajoranaGammaPrime(int count, int index)
+    {
+        var z = new BitArray(count);
+        z[index] = true;
+        return new MajoranaOperator(new BitArray(count), z, Coefficient.PlusOne);
     }
 
     private static MajoranaOperator MajoranaParity(int count, int index)

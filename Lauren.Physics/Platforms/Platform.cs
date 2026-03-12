@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using Lauren.Physics.Operators;
+using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Platforms;
 
@@ -160,6 +161,87 @@ public class Platform
     }
 
     /// <summary>
+    ///     Apply gamma gate on a Majorana qubit.
+    /// </summary>
+    public void U(int majoranaIndex)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+
+        int xColumn = 2 * majoranaIndex;
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
+            bool overlaps = _state.FermiRows[i][xColumn];
+            if (oddWeight == overlaps)
+            {
+                _state.Coefficients[i] *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply gamma-prime gate on a Majorana qubit.
+    /// </summary>
+    public void V(int majoranaIndex)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+
+        int zColumn = (2 * majoranaIndex) + 1;
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
+            bool overlaps = _state.FermiRows[i][zColumn];
+            if (oddWeight == overlaps)
+            {
+                _state.Coefficients[i] *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply i*gamma*gamma-prime gate on a Majorana qubit.
+    /// </summary>
+    public void N(int majoranaIndex)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+
+        int xColumn = 2 * majoranaIndex;
+        int zColumn = xColumn + 1;
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
+            bool overlaps = _state.FermiRows[i][xColumn] ^ _state.FermiRows[i][zColumn];
+            if (oddWeight != overlaps)
+            {
+                _state.Coefficients[i] *= Coefficient.MinusOne;
+            }
+        }
+    }
+
+    /// <summary>
+    ///     Apply P gate on a Majorana qubit.
+    /// </summary>
+    public void P(int majoranaIndex)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+
+        int xColumn = 2 * majoranaIndex;
+        int zColumn = xColumn + 1;
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool xOccupied = _state.FermiRows[i][xColumn];
+            bool zOccupied = _state.FermiRows[i][zColumn];
+            if (!xOccupied && zOccupied)
+            {
+                _state.Coefficients[i] *= Coefficient.MinusOne;
+            }
+
+            _state.FermiRows[i][xColumn] = zOccupied;
+            _state.FermiRows[i][zColumn] = xOccupied;
+        }
+    }
+
+    /// <summary>
     ///     Measure a Hermitian operator on the platform.
     /// </summary>
     /// <param name="op">
@@ -261,6 +343,14 @@ public class Platform
         if (qubitIndex < 0 || qubitIndex >= PauliCount)
         {
             throw new ArgumentOutOfRangeException(nameof(qubitIndex), "Qubit index is out of range.");
+        }
+    }
+
+    private void ValidateMajoranaQubitIndex(int majoranaIndex)
+    {
+        if (majoranaIndex < 0 || majoranaIndex >= MajoranaCount)
+        {
+            throw new ArgumentOutOfRangeException(nameof(majoranaIndex), "Majorana index is out of range.");
         }
     }
 }
