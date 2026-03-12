@@ -130,6 +130,42 @@ public class PlatformTests
     }
 
     [Fact]
+    public void CX_OnBellPreparation_CreatesExpectedCorrelations()
+    {
+        var platform = new Platform(pauliCount: 2, majoranaCount: 0);
+
+        platform.H(0);
+        platform.CX(0, 1);
+
+        Assert.Equal(1, platform.Measure(PauliOperatorOf(2, [0, 1], [] , Coefficient.PlusOne)));
+        Assert.Equal(1, platform.Measure(PauliOperatorOf(2, [], [0, 1], Coefficient.PlusOne)));
+    }
+
+    [Fact]
+    public void CNN_OnMeasuredGamma_MapsToExpectedMajoranaOperator()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 2);
+
+        int first = platform.Measure(MajoranaGamma(2, 1));
+        platform.CNN(0, 1);
+        int second = platform.Measure(MajoranaOperatorOf(2, [0, 1], [0], Coefficient.PlusI));
+
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public void Braid_OnMeasuredGamma_MapsToNegativeGammaPrime()
+    {
+        var platform = new Platform(pauliCount: 0, majoranaCount: 2);
+
+        int first = platform.Measure(MajoranaGamma(2, 1));
+        platform.Braid(0, 1);
+        int second = platform.Measure(MajoranaGammaPrime(2, 0));
+
+        Assert.Equal(-first, second);
+    }
+
+    [Fact]
     public void X_OnFreshPauliQubit_FlipsZEigenvalue()
     {
         var platform = new Platform(pauliCount: 1, majoranaCount: 0);
@@ -205,6 +241,29 @@ public class PlatformTests
     }
 
     [Fact]
+    public void CompositeOperations_OutOfRange_Throws()
+    {
+        var pauliPlatform = new Platform(pauliCount: 2, majoranaCount: 0);
+        var mixedPlatform = new Platform(pauliCount: 1, majoranaCount: 1);
+        var majoranaPlatform = new Platform(pauliCount: 0, majoranaCount: 2);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => pauliPlatform.CX(-1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => mixedPlatform.CNX(1, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => majoranaPlatform.CNN(0, 2));
+        Assert.Throws<ArgumentOutOfRangeException>(() => majoranaPlatform.Braid(2, 0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => pauliPlatform.Reset(2));
+    }
+
+    [Fact]
+    public void ErrorMethods_InvalidProbability_Throws()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 1);
+
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.XError(0, -0.1));
+        Assert.Throws<ArgumentOutOfRangeException>(() => platform.UError(0, 1.1));
+    }
+
+    [Fact]
     public void H_Twice_ReturnsToOriginalState()
     {
         var platform = new Platform(pauliCount: 1, majoranaCount: 0);
@@ -248,6 +307,72 @@ public class PlatformTests
         Assert.Equal(1, after);
     }
 
+    [Fact]
+    public void ErrorMethods_WithProbabilityOne_ApplyUnderlyingGate()
+    {
+        var xPlatform = new Platform(pauliCount: 1, majoranaCount: 0);
+        xPlatform.XError(0, 1);
+        Assert.Equal(-1, xPlatform.Measure(PauliZ(1, 0)));
+
+        var yPlatform = new Platform(pauliCount: 1, majoranaCount: 0);
+        yPlatform.YError(0, 1);
+        Assert.Equal(-1, yPlatform.Measure(PauliZ(1, 0)));
+
+        var zPlatform = new Platform(pauliCount: 1, majoranaCount: 0);
+        zPlatform.H(0);
+        zPlatform.ZError(0, 1);
+        Assert.Equal(-1, zPlatform.Measure(PauliX(1, 0)));
+
+        var uPlatform = new Platform(pauliCount: 0, majoranaCount: 1);
+        int gamma = uPlatform.Measure(MajoranaGamma(1, 0));
+        uPlatform.UError(0, 1);
+        Assert.Equal(-gamma, uPlatform.Measure(MajoranaGamma(1, 0)));
+
+        var vPlatform = new Platform(pauliCount: 0, majoranaCount: 1);
+        int gammaPrime = vPlatform.Measure(MajoranaGammaPrime(1, 0));
+        vPlatform.VError(0, 1);
+        Assert.Equal(-gammaPrime, vPlatform.Measure(MajoranaGammaPrime(1, 0)));
+
+        var nPlatform = new Platform(pauliCount: 0, majoranaCount: 2);
+        int remoteGamma = nPlatform.Measure(MajoranaGamma(2, 1));
+        nPlatform.NError(0, 1);
+        Assert.Equal(-remoteGamma, nPlatform.Measure(MajoranaGamma(2, 1)));
+    }
+
+    [Fact]
+    public void Reset_OnMinusZState_RestoresPlusZ()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+        platform.X(0);
+
+        platform.Reset(0);
+
+        Assert.Equal(1, platform.Measure(PauliZ(1, 0)));
+    }
+
+    [Fact]
+    public void Detect_ReturnsEigenvalueWithoutCollapsing()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+        platform.X(0);
+
+        int? detected = platform.Detect(PauliZ(1, 0));
+        int measured = platform.Measure(PauliZ(1, 0));
+
+        Assert.Equal(-1, detected);
+        Assert.Equal(-1, measured);
+    }
+
+    [Fact]
+    public void Detect_OnNonStabilizer_ReturnsNull()
+    {
+        var platform = new Platform(pauliCount: 1, majoranaCount: 0);
+
+        int? detected = platform.Detect(PauliX(1, 0));
+
+        Assert.Null(detected);
+    }
+
     private static PauliOperator PauliX(int count, int index)
     {
         var x = new BitArray(count);
@@ -271,6 +396,23 @@ public class PlatformTests
         return new PauliOperator(new BitArray(count), z, Coefficient.PlusOne);
     }
 
+    private static PauliOperator PauliOperatorOf(int count, int[] xIndices, int[] zIndices, Coefficient coefficient)
+    {
+        var x = new BitArray(count);
+        foreach (int index in xIndices)
+        {
+            x[index] = true;
+        }
+
+        var z = new BitArray(count);
+        foreach (int index in zIndices)
+        {
+            z[index] = true;
+        }
+
+        return new PauliOperator(x, z, coefficient);
+    }
+
     private static MajoranaOperator MajoranaGamma(int count, int index)
     {
         var x = new BitArray(count);
@@ -292,5 +434,22 @@ public class PlatformTests
         x[index] = true;
         z[index] = true;
         return new MajoranaOperator(x, z, Coefficient.PlusI);
+    }
+
+    private static MajoranaOperator MajoranaOperatorOf(int count, int[] xIndices, int[] zIndices, Coefficient coefficient)
+    {
+        var x = new BitArray(count);
+        foreach (int index in xIndices)
+        {
+            x[index] = true;
+        }
+
+        var z = new BitArray(count);
+        foreach (int index in zIndices)
+        {
+            z[index] = true;
+        }
+
+        return new MajoranaOperator(x, z, coefficient);
     }
 }

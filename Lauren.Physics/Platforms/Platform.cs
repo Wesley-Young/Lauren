@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using Lauren.Physics.Operators;
 using Lauren.Physics.Utility;
+// ReSharper disable InconsistentNaming
 
 namespace Lauren.Physics.Platforms;
 
@@ -10,6 +11,14 @@ namespace Lauren.Physics.Platforms;
 /// </summary>
 public class Platform
 {
+    private static readonly Coefficient[] CnnPhaseByPattern =
+    [
+        Coefficient.PlusOne, Coefficient.PlusI, Coefficient.PlusI, Coefficient.PlusOne,
+        Coefficient.PlusI, Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.MinusI,
+        Coefficient.PlusI, Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusI,
+        Coefficient.PlusOne, Coefficient.MinusI, Coefficient.MinusI, Coefficient.PlusOne
+    ];
+
     private readonly PlatformStateFrame _state;
 
     /// <summary>
@@ -242,6 +251,251 @@ public class Platform
     }
 
     /// <summary>
+    ///     Apply controlled-X gate on Pauli qubits.
+    /// </summary>
+    public void CX(int controlIndex, int targetIndex)
+    {
+        ValidatePauliQubitIndex(controlIndex);
+        ValidatePauliQubitIndex(targetIndex);
+
+        int controlXColumn = 2 * controlIndex;
+        int controlZColumn = controlXColumn + 1;
+        int targetXColumn = 2 * targetIndex;
+        int targetZColumn = targetXColumn + 1;
+
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool controlX = _state.QubitRows[i][controlXColumn];
+            bool targetZ = _state.QubitRows[i][targetZColumn];
+
+            _state.QubitRows[i][targetXColumn] ^= controlX;
+            _state.QubitRows[i][controlZColumn] ^= targetZ;
+        }
+    }
+
+    /// <summary>
+    ///     Apply controlled-X gate from a Majorana qubit onto a Pauli qubit.
+    /// </summary>
+    public void CNX(int controlIndex, int targetIndex)
+    {
+        ValidateMajoranaQubitIndex(controlIndex);
+        ValidatePauliQubitIndex(targetIndex);
+
+        int controlXColumn = 2 * controlIndex;
+        int controlZColumn = controlXColumn + 1;
+        int targetXColumn = 2 * targetIndex;
+        int targetZColumn = targetXColumn + 1;
+
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool controlX = _state.FermiRows[i][controlXColumn];
+            bool controlZ = _state.FermiRows[i][controlZColumn];
+            bool targetZ = _state.QubitRows[i][targetZColumn];
+            if (targetZ)
+            {
+                _state.Coefficients[i] *= Coefficient.PlusI;
+                if (controlZ)
+                {
+                    _state.Coefficients[i] *= Coefficient.MinusOne;
+                }
+            }
+
+            _state.QubitRows[i][targetXColumn] ^= controlX ^ controlZ;
+            _state.FermiRows[i][controlXColumn] = controlX ^ targetZ;
+            _state.FermiRows[i][controlZColumn] = controlZ ^ targetZ;
+        }
+    }
+
+    /// <summary>
+    ///     Apply controlled-N gate between two Majorana qubits.
+    /// </summary>
+    public void CNN(int controlIndex, int targetIndex)
+    {
+        ValidateMajoranaQubitIndex(controlIndex);
+        ValidateMajoranaQubitIndex(targetIndex);
+
+        if (targetIndex < controlIndex)
+        {
+            (controlIndex, targetIndex) = (targetIndex, controlIndex);
+        }
+
+        int controlXColumn = 2 * controlIndex;
+        int controlZColumn = controlXColumn + 1;
+        int targetXColumn = 2 * targetIndex;
+        int targetZColumn = targetXColumn + 1;
+
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool controlX = _state.FermiRows[i][controlXColumn];
+            bool controlZ = _state.FermiRows[i][controlZColumn];
+            bool targetX = _state.FermiRows[i][targetXColumn];
+            bool targetZ = _state.FermiRows[i][targetZColumn];
+
+            int pattern =
+                (controlX ? 0b1000 : 0) |
+                (controlZ ? 0b0100 : 0) |
+                (targetX ? 0b0010 : 0) |
+                (targetZ ? 0b0001 : 0);
+            _state.Coefficients[i] *= CnnPhaseByPattern[pattern];
+
+            _state.FermiRows[i][controlXColumn] = controlX ^ targetX ^ targetZ;
+            _state.FermiRows[i][controlZColumn] = controlZ ^ targetX ^ targetZ;
+            _state.FermiRows[i][targetXColumn] = targetX ^ controlX ^ controlZ;
+            _state.FermiRows[i][targetZColumn] = targetZ ^ controlX ^ controlZ;
+        }
+    }
+
+    /// <summary>
+    ///     Apply braid gate between two Majorana qubits.
+    /// </summary>
+    public void Braid(int controlIndex, int targetIndex)
+    {
+        ValidateMajoranaQubitIndex(controlIndex);
+        ValidateMajoranaQubitIndex(targetIndex);
+
+        int controlZColumn = (2 * controlIndex) + 1;
+        int targetXColumn = 2 * targetIndex;
+
+        int middleStart = Math.Min(controlZColumn, targetXColumn) + 1;
+        int middleEnd = Math.Max(controlZColumn, targetXColumn);
+
+        for (int i = 0; i < _state.TotalRows; i++)
+        {
+            bool controlZ = _state.FermiRows[i][controlZColumn];
+            bool targetX = _state.FermiRows[i][targetXColumn];
+            bool middleParityOdd = RangeParity(_state.FermiRows[i], middleStart, middleEnd);
+
+            bool phaseOdd = false;
+            if (controlZ && middleParityOdd) phaseOdd = !phaseOdd;
+            if (targetX && middleParityOdd) phaseOdd = !phaseOdd;
+            if (controlZ && targetX) phaseOdd = !phaseOdd;
+            if (targetX) phaseOdd = !phaseOdd;
+
+            if (phaseOdd)
+            {
+                _state.Coefficients[i] *= Coefficient.MinusOne;
+            }
+
+            _state.FermiRows[i][controlZColumn] = targetX;
+            _state.FermiRows[i][targetXColumn] = controlZ;
+        }
+    }
+
+    /// <summary>
+    ///     Apply Pauli-X noise on a Pauli qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void XError(int qubitIndex, double probability)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            X(qubitIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Apply Pauli-Y noise on a Pauli qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void YError(int qubitIndex, double probability)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            Y(qubitIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Apply Pauli-Z noise on a Pauli qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void ZError(int qubitIndex, double probability)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            Z(qubitIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Apply Majorana-U noise on a Majorana qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void UError(int majoranaIndex, double probability)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            U(majoranaIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Apply Majorana-V noise on a Majorana qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void VError(int majoranaIndex, double probability)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            V(majoranaIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Apply Majorana-N noise on a Majorana qubit with probability <paramref name="probability" />.
+    /// </summary>
+    public void NError(int majoranaIndex, double probability)
+    {
+        ValidateMajoranaQubitIndex(majoranaIndex);
+        ValidateProbability(probability);
+        if (Random.Shared.NextDouble() < probability)
+        {
+            N(majoranaIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Reset a Pauli qubit into the +1 eigenspace of Z.
+    /// </summary>
+    public void Reset(int qubitIndex)
+    {
+        ValidatePauliQubitIndex(qubitIndex);
+
+        var occupiedZ = new BitArray(PauliCount);
+        occupiedZ[qubitIndex] = true;
+        var zOperator = new PauliOperator(new BitArray(PauliCount), occupiedZ, Coefficient.PlusOne);
+        if (Measure(zOperator) == -1)
+        {
+            X(qubitIndex);
+        }
+    }
+
+    /// <summary>
+    ///     Detect whether the current state lies in the eigenspace of a Hermitian operator.
+    /// </summary>
+    public int? Detect(QuantumOperator op)
+    {
+        if (!op.IsHermitian())
+        {
+            throw new ArgumentException("Detection operator must be Hermitian.");
+        }
+
+        var detection = BuildMeasurement(op);
+        if (!_state.TrySolveSpan(detection.Qubits, detection.FermiSites, out bool[] solution))
+        {
+            return null;
+        }
+
+        var evaluatedCoefficient = _state.MultiplySelectedCoefficient(solution);
+        return evaluatedCoefficient == detection.Coefficient ? 1 : -1;
+    }
+
+    /// <summary>
     ///     Measure a Hermitian operator on the platform.
     /// </summary>
     /// <param name="op">
@@ -263,38 +517,7 @@ public class Platform
             throw new ArgumentException("Measurement operator must be Hermitian.");
         }
 
-        (Coefficient Coefficient, BitArray Qubits, BitArray FermiSites) measurement;
-        switch (op)
-        {
-            case PauliOperator pauli:
-                if (pauli.OccupiedX.Length != PauliCount)
-                {
-                    throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.");
-                }
-
-                measurement = (
-                    pauli.Coefficient,
-                    pauli.ZippedOccupations(),
-                    new BitArray(2 * MajoranaCount));
-                break;
-
-            case MajoranaOperator majorana:
-                if (majorana.OccupiedX.Length != MajoranaCount)
-                {
-                    throw new ArgumentException("Majorana operator size does not match platform Majorana site count.");
-                }
-
-                measurement = (
-                    majorana.Coefficient,
-                    new BitArray(2 * PauliCount),
-                    majorana.ZippedOccupations());
-                break;
-
-            default:
-                throw new ArgumentException(
-                    "Measurement operator must be either PauliOperator or MajoranaOperator.",
-                    nameof(op));
-        }
+        var measurement = BuildMeasurement(op);
 
         int firstAnticommutingIndex = -1;
         for (int i = 0; i < _state.TotalRows; i++)
@@ -346,11 +569,53 @@ public class Platform
         }
     }
 
+    private static bool RangeParity(BitArray bits, int startInclusive, int endExclusive)
+    {
+        bool parity = false;
+        for (int i = startInclusive; i < endExclusive; i++)
+        {
+            if (bits[i])
+            {
+                parity = !parity;
+            }
+        }
+
+        return parity;
+    }
+
+    private (Coefficient Coefficient, BitArray Qubits, BitArray FermiSites) BuildMeasurement(QuantumOperator op)
+    {
+        return op switch
+        {
+            PauliOperator pauli when pauli.OccupiedX.Length == PauliCount => (
+                pauli.Coefficient,
+                pauli.ZippedOccupations(),
+                new BitArray(2 * MajoranaCount)),
+            PauliOperator => throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count."),
+            MajoranaOperator majorana when majorana.OccupiedX.Length == MajoranaCount => (
+                majorana.Coefficient,
+                new BitArray(2 * PauliCount),
+                majorana.ZippedOccupations()),
+            MajoranaOperator => throw new ArgumentException("Majorana operator size does not match platform Majorana site count."),
+            _ => throw new ArgumentException(
+                "Measurement operator must be either PauliOperator or MajoranaOperator.",
+                nameof(op))
+        };
+    }
+
     private void ValidateMajoranaQubitIndex(int majoranaIndex)
     {
         if (majoranaIndex < 0 || majoranaIndex >= MajoranaCount)
         {
             throw new ArgumentOutOfRangeException(nameof(majoranaIndex), "Majorana index is out of range.");
+        }
+    }
+
+    private static void ValidateProbability(double probability)
+    {
+        if (double.IsNaN(probability) || probability < 0d || probability > 1d)
+        {
+            throw new ArgumentOutOfRangeException(nameof(probability), "Probability must be between 0 and 1.");
         }
     }
 }
