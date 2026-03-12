@@ -39,27 +39,7 @@ internal sealed class PlatformStateFrame
     {
         ValidateRowIndex(row);
         ValidateOperatorDimensions(opQubits, opFermiSites);
-
-        bool parity = false;
-        var rowQubits = QubitRows[row];
-        for (int i = 0; i < rowQubits.Length; i += 2)
-        {
-            if (rowQubits[i] && opQubits[i + 1]) parity = !parity;
-            if (rowQubits[i + 1] && opQubits[i]) parity = !parity;
-        }
-
-        bool rowFermiWeightOdd = false;
-        bool opFermiWeightOdd = false;
-        var rowFermiSites = FermiRows[row];
-        for (int i = 0; i < rowFermiSites.Length; i++)
-        {
-            if (rowFermiSites[i] && opFermiSites[i]) parity = !parity;
-            if (rowFermiSites[i]) rowFermiWeightOdd = !rowFermiWeightOdd;
-            if (opFermiSites[i]) opFermiWeightOdd = !opFermiWeightOdd;
-        }
-
-        if (rowFermiWeightOdd && opFermiWeightOdd) parity = !parity;
-        return !parity;
+        return CommutationUtility.Commutes(QubitRows[row], FermiRows[row], opQubits, opFermiSites);
     }
 
     public void MultiplyRowInPlace(int targetRow, int sourceRow)

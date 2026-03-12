@@ -11,14 +11,6 @@ namespace Lauren.Physics.Platforms;
 /// </summary>
 public class Platform
 {
-    private static readonly Coefficient[] CnnPhaseByPattern =
-    [
-        Coefficient.PlusOne, Coefficient.PlusI, Coefficient.PlusI, Coefficient.PlusOne,
-        Coefficient.PlusI, Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.MinusI,
-        Coefficient.PlusI, Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusI,
-        Coefficient.PlusOne, Coefficient.MinusI, Coefficient.MinusI, Coefficient.PlusOne
-    ];
-
     private readonly PlatformStateFrame _state;
 
     /// <summary>
@@ -69,9 +61,9 @@ public class Platform
     /// </summary>
     public void X(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
 
-        int zColumn = (2 * qubitIndex) + 1;
+        int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             if (_state.QubitRows[i][zColumn])
@@ -87,10 +79,10 @@ public class Platform
     /// </summary>
     public void Y(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
 
-        int xColumn = 2 * qubitIndex;
-        int zColumn = xColumn + 1;
+        int xColumn = CliffordTransformUtility.GetPauliXColumn(qubitIndex);
+        int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             if (_state.QubitRows[i][zColumn])
@@ -110,9 +102,9 @@ public class Platform
     /// </summary>
     public void Z(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
 
-        int xColumn = 2 * qubitIndex;
+        int xColumn = CliffordTransformUtility.GetPauliXColumn(qubitIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             if (_state.QubitRows[i][xColumn])
@@ -128,21 +120,10 @@ public class Platform
     /// </summary>
     public void H(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
-
-        int xColumn = 2 * qubitIndex;
-        int zColumn = xColumn + 1;
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool xOccupied = _state.QubitRows[i][xColumn];
-            bool zOccupied = _state.QubitRows[i][zColumn];
-            if (xOccupied && zOccupied)
-            {
-                _state.Coefficients[i] *= Coefficient.MinusOne;
-            }
-
-            _state.QubitRows[i][xColumn] = zOccupied;
-            _state.QubitRows[i][zColumn] = xOccupied;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyH(_state.QubitRows[i], qubitIndex);
         }
 
     }
@@ -152,19 +133,10 @@ public class Platform
     /// </summary>
     public void S(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
-
-        int xColumn = 2 * qubitIndex;
-        int zColumn = xColumn + 1;
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool xOccupied = _state.QubitRows[i][xColumn];
-            if (xOccupied)
-            {
-                _state.Coefficients[i] *= Coefficient.PlusI;
-            }
-
-            _state.QubitRows[i][zColumn] ^= xOccupied;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyS(_state.QubitRows[i], qubitIndex);
         }
 
     }
@@ -174,9 +146,9 @@ public class Platform
     /// </summary>
     public void U(int majoranaIndex)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
 
-        int xColumn = 2 * majoranaIndex;
+        int xColumn = CliffordTransformUtility.GetMajoranaXColumn(majoranaIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
@@ -193,9 +165,9 @@ public class Platform
     /// </summary>
     public void V(int majoranaIndex)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
 
-        int zColumn = (2 * majoranaIndex) + 1;
+        int zColumn = CliffordTransformUtility.GetMajoranaZColumn(majoranaIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
@@ -212,10 +184,10 @@ public class Platform
     /// </summary>
     public void N(int majoranaIndex)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
 
-        int xColumn = 2 * majoranaIndex;
-        int zColumn = xColumn + 1;
+        int xColumn = CliffordTransformUtility.GetMajoranaXColumn(majoranaIndex);
+        int zColumn = CliffordTransformUtility.GetMajoranaZColumn(majoranaIndex);
         for (int i = 0; i < _state.TotalRows; i++)
         {
             bool oddWeight = (_state.FermiRows[i].Weight() & 1) != 0;
@@ -232,21 +204,10 @@ public class Platform
     /// </summary>
     public void P(int majoranaIndex)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
-
-        int xColumn = 2 * majoranaIndex;
-        int zColumn = xColumn + 1;
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool xOccupied = _state.FermiRows[i][xColumn];
-            bool zOccupied = _state.FermiRows[i][zColumn];
-            if (!xOccupied && zOccupied)
-            {
-                _state.Coefficients[i] *= Coefficient.MinusOne;
-            }
-
-            _state.FermiRows[i][xColumn] = zOccupied;
-            _state.FermiRows[i][zColumn] = xOccupied;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyP(_state.FermiRows[i], majoranaIndex);
         }
     }
 
@@ -255,21 +216,12 @@ public class Platform
     /// </summary>
     public void CX(int controlIndex, int targetIndex)
     {
-        ValidatePauliQubitIndex(controlIndex);
-        ValidatePauliQubitIndex(targetIndex);
-
-        int controlXColumn = 2 * controlIndex;
-        int controlZColumn = controlXColumn + 1;
-        int targetXColumn = 2 * targetIndex;
-        int targetZColumn = targetXColumn + 1;
+        PlatformArgumentUtility.ValidatePauliQubitIndex(controlIndex, PauliCount, nameof(controlIndex));
+        PlatformArgumentUtility.ValidatePauliQubitIndex(targetIndex, PauliCount, nameof(targetIndex));
 
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool controlX = _state.QubitRows[i][controlXColumn];
-            bool targetZ = _state.QubitRows[i][targetZColumn];
-
-            _state.QubitRows[i][targetXColumn] ^= controlX;
-            _state.QubitRows[i][controlZColumn] ^= targetZ;
+            CliffordTransformUtility.ApplyCX(_state.QubitRows[i], controlIndex, targetIndex);
         }
     }
 
@@ -278,31 +230,16 @@ public class Platform
     /// </summary>
     public void CNX(int controlIndex, int targetIndex)
     {
-        ValidateMajoranaQubitIndex(controlIndex);
-        ValidatePauliQubitIndex(targetIndex);
-
-        int controlXColumn = 2 * controlIndex;
-        int controlZColumn = controlXColumn + 1;
-        int targetXColumn = 2 * targetIndex;
-        int targetZColumn = targetXColumn + 1;
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(controlIndex, MajoranaCount, nameof(controlIndex));
+        PlatformArgumentUtility.ValidatePauliQubitIndex(targetIndex, PauliCount, nameof(targetIndex));
 
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool controlX = _state.FermiRows[i][controlXColumn];
-            bool controlZ = _state.FermiRows[i][controlZColumn];
-            bool targetZ = _state.QubitRows[i][targetZColumn];
-            if (targetZ)
-            {
-                _state.Coefficients[i] *= Coefficient.PlusI;
-                if (controlZ)
-                {
-                    _state.Coefficients[i] *= Coefficient.MinusOne;
-                }
-            }
-
-            _state.QubitRows[i][targetXColumn] ^= controlX ^ controlZ;
-            _state.FermiRows[i][controlXColumn] = controlX ^ targetZ;
-            _state.FermiRows[i][controlZColumn] = controlZ ^ targetZ;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyCNX(
+                _state.FermiRows[i],
+                _state.QubitRows[i],
+                controlIndex,
+                targetIndex);
         }
     }
 
@@ -311,37 +248,17 @@ public class Platform
     /// </summary>
     public void CNN(int controlIndex, int targetIndex)
     {
-        ValidateMajoranaQubitIndex(controlIndex);
-        ValidateMajoranaQubitIndex(targetIndex);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(controlIndex, MajoranaCount, nameof(controlIndex));
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(targetIndex, MajoranaCount, nameof(targetIndex));
 
         if (targetIndex < controlIndex)
         {
             (controlIndex, targetIndex) = (targetIndex, controlIndex);
         }
 
-        int controlXColumn = 2 * controlIndex;
-        int controlZColumn = controlXColumn + 1;
-        int targetXColumn = 2 * targetIndex;
-        int targetZColumn = targetXColumn + 1;
-
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool controlX = _state.FermiRows[i][controlXColumn];
-            bool controlZ = _state.FermiRows[i][controlZColumn];
-            bool targetX = _state.FermiRows[i][targetXColumn];
-            bool targetZ = _state.FermiRows[i][targetZColumn];
-
-            int pattern =
-                (controlX ? 0b1000 : 0) |
-                (controlZ ? 0b0100 : 0) |
-                (targetX ? 0b0010 : 0) |
-                (targetZ ? 0b0001 : 0);
-            _state.Coefficients[i] *= CnnPhaseByPattern[pattern];
-
-            _state.FermiRows[i][controlXColumn] = controlX ^ targetX ^ targetZ;
-            _state.FermiRows[i][controlZColumn] = controlZ ^ targetX ^ targetZ;
-            _state.FermiRows[i][targetXColumn] = targetX ^ controlX ^ controlZ;
-            _state.FermiRows[i][targetZColumn] = targetZ ^ controlX ^ controlZ;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyCNN(_state.FermiRows[i], controlIndex, targetIndex);
         }
     }
 
@@ -350,34 +267,12 @@ public class Platform
     /// </summary>
     public void Braid(int controlIndex, int targetIndex)
     {
-        ValidateMajoranaQubitIndex(controlIndex);
-        ValidateMajoranaQubitIndex(targetIndex);
-
-        int controlZColumn = (2 * controlIndex) + 1;
-        int targetXColumn = 2 * targetIndex;
-
-        int middleStart = Math.Min(controlZColumn, targetXColumn) + 1;
-        int middleEnd = Math.Max(controlZColumn, targetXColumn);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(controlIndex, MajoranaCount, nameof(controlIndex));
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(targetIndex, MajoranaCount, nameof(targetIndex));
 
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            bool controlZ = _state.FermiRows[i][controlZColumn];
-            bool targetX = _state.FermiRows[i][targetXColumn];
-            bool middleParityOdd = RangeParity(_state.FermiRows[i], middleStart, middleEnd);
-
-            bool phaseOdd = false;
-            if (controlZ && middleParityOdd) phaseOdd = !phaseOdd;
-            if (targetX && middleParityOdd) phaseOdd = !phaseOdd;
-            if (controlZ && targetX) phaseOdd = !phaseOdd;
-            if (targetX) phaseOdd = !phaseOdd;
-
-            if (phaseOdd)
-            {
-                _state.Coefficients[i] *= Coefficient.MinusOne;
-            }
-
-            _state.FermiRows[i][controlZColumn] = targetX;
-            _state.FermiRows[i][targetXColumn] = controlZ;
+            _state.Coefficients[i] *= CliffordTransformUtility.ApplyBraid(_state.FermiRows[i], controlIndex, targetIndex);
         }
     }
 
@@ -386,8 +281,8 @@ public class Platform
     /// </summary>
     public void XError(int qubitIndex, double probability)
     {
-        ValidatePauliQubitIndex(qubitIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             X(qubitIndex);
@@ -399,8 +294,8 @@ public class Platform
     /// </summary>
     public void YError(int qubitIndex, double probability)
     {
-        ValidatePauliQubitIndex(qubitIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             Y(qubitIndex);
@@ -412,8 +307,8 @@ public class Platform
     /// </summary>
     public void ZError(int qubitIndex, double probability)
     {
-        ValidatePauliQubitIndex(qubitIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             Z(qubitIndex);
@@ -425,8 +320,8 @@ public class Platform
     /// </summary>
     public void UError(int majoranaIndex, double probability)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             U(majoranaIndex);
@@ -438,8 +333,8 @@ public class Platform
     /// </summary>
     public void VError(int majoranaIndex, double probability)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             V(majoranaIndex);
@@ -451,8 +346,8 @@ public class Platform
     /// </summary>
     public void NError(int majoranaIndex, double probability)
     {
-        ValidateMajoranaQubitIndex(majoranaIndex);
-        ValidateProbability(probability);
+        PlatformArgumentUtility.ValidateMajoranaQubitIndex(majoranaIndex, MajoranaCount);
+        PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
             N(majoranaIndex);
@@ -464,7 +359,7 @@ public class Platform
     /// </summary>
     public void Reset(int qubitIndex)
     {
-        ValidatePauliQubitIndex(qubitIndex);
+        PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
 
         var occupiedZ = new BitArray(PauliCount);
         occupiedZ[qubitIndex] = true;
@@ -485,7 +380,7 @@ public class Platform
             throw new ArgumentException("Detection operator must be Hermitian.");
         }
 
-        var detection = BuildMeasurement(op);
+        var detection = OperatorEmbeddingUtility.Embed(op, PauliCount, MajoranaCount);
         if (!_state.TrySolveSpan(detection.Qubits, detection.FermiSites, out bool[] solution))
         {
             return null;
@@ -517,7 +412,7 @@ public class Platform
             throw new ArgumentException("Measurement operator must be Hermitian.");
         }
 
-        var measurement = BuildMeasurement(op);
+        var measurement = OperatorEmbeddingUtility.Embed(op, PauliCount, MajoranaCount);
 
         int firstAnticommutingIndex = -1;
         for (int i = 0; i < _state.TotalRows; i++)
@@ -561,61 +456,4 @@ public class Platform
         return evaluatedCoefficient == measurement.Coefficient ? 1 : -1;
     }
 
-    private void ValidatePauliQubitIndex(int qubitIndex)
-    {
-        if (qubitIndex < 0 || qubitIndex >= PauliCount)
-        {
-            throw new ArgumentOutOfRangeException(nameof(qubitIndex), "Qubit index is out of range.");
-        }
-    }
-
-    private static bool RangeParity(BitArray bits, int startInclusive, int endExclusive)
-    {
-        bool parity = false;
-        for (int i = startInclusive; i < endExclusive; i++)
-        {
-            if (bits[i])
-            {
-                parity = !parity;
-            }
-        }
-
-        return parity;
-    }
-
-    private (Coefficient Coefficient, BitArray Qubits, BitArray FermiSites) BuildMeasurement(QuantumOperator op)
-    {
-        return op switch
-        {
-            PauliOperator pauli when pauli.OccupiedX.Length == PauliCount => (
-                pauli.Coefficient,
-                pauli.ZippedOccupations(),
-                new BitArray(2 * MajoranaCount)),
-            PauliOperator => throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count."),
-            MajoranaOperator majorana when majorana.OccupiedX.Length == MajoranaCount => (
-                majorana.Coefficient,
-                new BitArray(2 * PauliCount),
-                majorana.ZippedOccupations()),
-            MajoranaOperator => throw new ArgumentException("Majorana operator size does not match platform Majorana site count."),
-            _ => throw new ArgumentException(
-                "Measurement operator must be either PauliOperator or MajoranaOperator.",
-                nameof(op))
-        };
-    }
-
-    private void ValidateMajoranaQubitIndex(int majoranaIndex)
-    {
-        if (majoranaIndex < 0 || majoranaIndex >= MajoranaCount)
-        {
-            throw new ArgumentOutOfRangeException(nameof(majoranaIndex), "Majorana index is out of range.");
-        }
-    }
-
-    private static void ValidateProbability(double probability)
-    {
-        if (double.IsNaN(probability) || probability < 0d || probability > 1d)
-        {
-            throw new ArgumentOutOfRangeException(nameof(probability), "Probability must be between 0 and 1.");
-        }
-    }
 }
