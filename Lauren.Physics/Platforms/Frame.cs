@@ -25,7 +25,7 @@ public sealed class Frame
         {
             if (Random.Shared.NextDouble() < 0.5)
             {
-                _qubitFrame[CliffordTransformUtility.GetPauliZColumn(i)] = true;
+                _qubitFrame.SetBitUnchecked(CliffordTransformUtility.GetPauliZColumn(i), true);
             }
         }
     }
@@ -48,7 +48,11 @@ public sealed class Frame
             throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.", nameof(op));
         }
 
-        var measurementQubits = pauli.ZippedOccupationsPacked();
+        return MeasurePauli(pauli.ZippedOccupationsPacked(), referenceValue);
+    }
+
+    internal int MeasurePauli(PackedBits measurementQubits, int referenceValue)
+    {
         bool commutes = CommutationUtility.CommutesPauli(_qubitFrame, measurementQubits);
         int result = commutes ? referenceValue : -referenceValue;
 
@@ -91,8 +95,7 @@ public sealed class Frame
         PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
-            int xColumn = CliffordTransformUtility.GetPauliXColumn(qubitIndex);
-            _qubitFrame[xColumn] = !_qubitFrame[xColumn];
+            _qubitFrame.ToggleBitUnchecked(CliffordTransformUtility.GetPauliXColumn(qubitIndex));
         }
     }
 
@@ -104,8 +107,8 @@ public sealed class Frame
         {
             int xColumn = CliffordTransformUtility.GetPauliXColumn(qubitIndex);
             int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
-            _qubitFrame[xColumn] = !_qubitFrame[xColumn];
-            _qubitFrame[zColumn] = !_qubitFrame[zColumn];
+            _qubitFrame.ToggleBitUnchecked(xColumn);
+            _qubitFrame.ToggleBitUnchecked(zColumn);
         }
     }
 
@@ -115,8 +118,7 @@ public sealed class Frame
         PlatformArgumentUtility.ValidateProbability(probability);
         if (Random.Shared.NextDouble() < probability)
         {
-            int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
-            _qubitFrame[zColumn] = !_qubitFrame[zColumn];
+            _qubitFrame.ToggleBitUnchecked(CliffordTransformUtility.GetPauliZColumn(qubitIndex));
         }
     }
 
@@ -125,11 +127,11 @@ public sealed class Frame
         PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
         int xColumn = CliffordTransformUtility.GetPauliXColumn(qubitIndex);
         int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
-        _qubitFrame[xColumn] = false;
-        _qubitFrame[zColumn] = false;
+        _qubitFrame.SetBitUnchecked(xColumn, false);
+        _qubitFrame.SetBitUnchecked(zColumn, false);
         if (Random.Shared.NextDouble() < 0.5)
         {
-            _qubitFrame[zColumn] = true;
+            _qubitFrame.SetBitUnchecked(zColumn, true);
         }
     }
 }

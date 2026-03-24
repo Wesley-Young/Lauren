@@ -64,28 +64,53 @@ internal sealed class PackedBits : IEquatable<PackedBits>
         get
         {
             ValidateIndex(index);
-            int wordIndex = index >> 6;
-            int bitIndex = index & 63;
-            return ((_words[wordIndex] >> bitIndex) & 1UL) != 0;
+            return GetBitUnchecked(index);
         }
         set
         {
             ValidateIndex(index);
-            int wordIndex = index >> 6;
-            int bitIndex = index & 63;
-            ulong mask = 1UL << bitIndex;
-            if (value)
-            {
-                _words[wordIndex] |= mask;
-            }
-            else
-            {
-                _words[wordIndex] &= ~mask;
-            }
+            SetBitUnchecked(index, value);
         }
     }
 
     public PackedBits Clone() => new((ulong[])_words.Clone(), Length);
+
+    internal bool GetBitUnchecked(int index)
+    {
+        int wordIndex = index >> 6;
+        int bitIndex = index & 63;
+        return ((_words[wordIndex] >> bitIndex) & 1UL) != 0;
+    }
+
+    internal void SetBitUnchecked(int index, bool value)
+    {
+        int wordIndex = index >> 6;
+        int bitIndex = index & 63;
+        ulong mask = 1UL << bitIndex;
+        if (value)
+        {
+            _words[wordIndex] |= mask;
+        }
+        else
+        {
+            _words[wordIndex] &= ~mask;
+        }
+    }
+
+    internal void ToggleBitUnchecked(int index)
+    {
+        int wordIndex = index >> 6;
+        int bitIndex = index & 63;
+        _words[wordIndex] ^= 1UL << bitIndex;
+    }
+
+    internal void SwapBitsUnchecked(int leftIndex, int rightIndex)
+    {
+        bool left = GetBitUnchecked(leftIndex);
+        bool right = GetBitUnchecked(rightIndex);
+        SetBitUnchecked(leftIndex, right);
+        SetBitUnchecked(rightIndex, left);
+    }
 
     public BitArray ToBitArray()
     {

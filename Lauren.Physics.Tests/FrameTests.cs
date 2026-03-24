@@ -1,6 +1,7 @@
 using System.Collections;
 using Lauren.Physics.Operators;
 using Lauren.Physics.Platforms;
+using Lauren.Physics.Utility;
 using Xunit;
 
 namespace Lauren.Physics.Tests;
@@ -52,6 +53,18 @@ public class FrameTests
     }
 
     [Fact]
+    public void MeasurePauli_InternalPackedPathMatchesExpectedParity()
+    {
+        var frame = new Frame();
+        frame.Trap(pauliCount: 1);
+        frame.XError(0, 1);
+
+        int result = frame.MeasurePauli(PauliZ(1, 0).ZippedOccupationsPacked(), 1);
+
+        Assert.Equal(-1, result);
+    }
+
+    [Fact]
     public void H_PropagatesXFrameIntoZFrame()
     {
         var frame = new Frame();
@@ -59,6 +72,18 @@ public class FrameTests
         frame.XError(0, 1);
 
         frame.H(0);
+
+        Assert.Equal(-1, frame.Measure(PauliX(1, 0), 1));
+    }
+
+    [Fact]
+    public void S_PropagatesXFrameIntoXMeasurement()
+    {
+        var frame = new Frame();
+        frame.Trap(pauliCount: 1);
+        frame.XError(0, 1);
+
+        frame.S(0);
 
         Assert.Equal(-1, frame.Measure(PauliX(1, 0), 1));
     }

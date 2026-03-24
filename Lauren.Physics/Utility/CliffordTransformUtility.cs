@@ -12,10 +12,9 @@ internal static class CliffordTransformUtility
     {
         int xColumn = GetPauliXColumn(qubitIndex);
         int zColumn = GetPauliZColumn(qubitIndex);
-        bool xOccupied = qubits[xColumn];
-        bool zOccupied = qubits[zColumn];
-        qubits[xColumn] = zOccupied;
-        qubits[zColumn] = xOccupied;
+        bool xOccupied = qubits.GetBitUnchecked(xColumn);
+        bool zOccupied = qubits.GetBitUnchecked(zColumn);
+        qubits.SwapBitsUnchecked(xColumn, zColumn);
         return xOccupied && zOccupied ? Coefficient.MinusOne : Coefficient.PlusOne;
     }
 
@@ -23,8 +22,12 @@ internal static class CliffordTransformUtility
     {
         int xColumn = GetPauliXColumn(qubitIndex);
         int zColumn = GetPauliZColumn(qubitIndex);
-        bool xOccupied = qubits[xColumn];
-        qubits[zColumn] ^= xOccupied;
+        bool xOccupied = qubits.GetBitUnchecked(xColumn);
+        if (xOccupied)
+        {
+            qubits.ToggleBitUnchecked(zColumn);
+        }
+
         return xOccupied ? Coefficient.PlusI : Coefficient.PlusOne;
     }
 
@@ -35,9 +38,16 @@ internal static class CliffordTransformUtility
         int targetXColumn = GetPauliXColumn(targetIndex);
         int targetZColumn = GetPauliZColumn(targetIndex);
 
-        bool controlX = qubits[controlXColumn];
-        bool targetZ = qubits[targetZColumn];
-        qubits[targetXColumn] ^= controlX;
-        qubits[controlZColumn] ^= targetZ;
+        bool controlX = qubits.GetBitUnchecked(controlXColumn);
+        bool targetZ = qubits.GetBitUnchecked(targetZColumn);
+        if (controlX)
+        {
+            qubits.ToggleBitUnchecked(targetXColumn);
+        }
+
+        if (targetZ)
+        {
+            qubits.ToggleBitUnchecked(controlZColumn);
+        }
     }
 }
