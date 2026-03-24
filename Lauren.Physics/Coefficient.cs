@@ -8,57 +8,30 @@ namespace Lauren.Physics;
 /// </summary>
 public enum Coefficient
 {
-    PlusOne,
-    MinusOne,
-    PlusI,
-    MinusI
+    PlusOne = 0,
+    PlusI = 1,
+    MinusOne = 2,
+    MinusI = 3
 }
 
 public static class CoefficientExtensions
 {
-    private static int ToIndex(Coefficient value)
-    {
-        int index = (int)value;
-        if ((uint)index >= 4u)
-        {
-            throw new ArgumentOutOfRangeException(nameof(value), "Invalid coefficient value.");
-        }
-
-        return index;
-    }
-
     private static readonly Complex[] ComplexByCoefficient =
     [
         new(1, 0),
-        new(-1, 0),
         new(0, 1),
+        new(-1, 0),
         new(0, -1)
-    ];
-
-    // Index: (base << 2) | exponentMod4
-    private static readonly Coefficient[] PowerTable =
-    [
-        Coefficient.PlusOne, Coefficient.PlusOne, Coefficient.PlusOne, Coefficient.PlusOne,
-        Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusOne,
-        Coefficient.PlusOne, Coefficient.PlusI, Coefficient.MinusOne, Coefficient.MinusI,
-        Coefficient.PlusOne, Coefficient.MinusI, Coefficient.MinusOne, Coefficient.PlusI
-    ];
-
-    // Index: (left << 2) | right
-    private static readonly Coefficient[] MultiplyTable =
-    [
-        Coefficient.PlusOne, Coefficient.MinusOne, Coefficient.PlusI, Coefficient.MinusI,
-        Coefficient.MinusOne, Coefficient.PlusOne, Coefficient.MinusI, Coefficient.PlusI,
-        Coefficient.PlusI, Coefficient.MinusI, Coefficient.MinusOne, Coefficient.PlusOne,
-        Coefficient.MinusI, Coefficient.PlusI, Coefficient.PlusOne, Coefficient.MinusOne
     ];
 
     extension(Coefficient coefficient)
     {
+        public int ToPhase() => (int)coefficient;
+
         /// <summary>
         ///     Get the complex value of the coefficient.
         /// </summary>
-        public Complex ToComplex() => ComplexByCoefficient[ToIndex(coefficient)];
+        public Complex ToComplex() => ComplexByCoefficient[coefficient.ToPhase()];
         
         /// <summary>
         ///     Return the Coefficient corresponding to the given complex number.
@@ -85,23 +58,23 @@ public static class CoefficientExtensions
         public Coefficient Power(int exponent)
         {
             int normalizedExponent = exponent & 0b11;
-            return PowerTable[(ToIndex(coefficient) << 2) | normalizedExponent];
+            return (Coefficient)((coefficient.ToPhase() * normalizedExponent) & 0b11);
         }
 
         /// <summary>
         ///     Multiply two coefficients together.
         /// </summary>
         public static Coefficient operator *(Coefficient a, Coefficient b) =>
-            MultiplyTable[(ToIndex(a) << 2) | ToIndex(b)];
+            (Coefficient)((a.ToPhase() + b.ToPhase()) & 0b11);
 
         /// <summary>
         ///     Check if the coefficient is real (i.e., +1 or -1).
         /// </summary>
-        public bool IsReal() => ToIndex(coefficient) <= 1;
+        public bool IsReal() => (coefficient.ToPhase() & 1) == 0;
 
         /// <summary>
         ///     Check if the coefficient is imaginary (i.e., +i or -i).
         /// </summary>
-        public bool IsImaginary() => ToIndex(coefficient) >= 2;
+        public bool IsImaginary() => (coefficient.ToPhase() & 1) != 0;
     }
 }
