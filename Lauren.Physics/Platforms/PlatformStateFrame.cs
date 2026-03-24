@@ -1,4 +1,3 @@
-using System.Collections;
 using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Platforms;
@@ -18,12 +17,12 @@ internal sealed class PlatformStateFrame
         _fermiColumns = fermiColumns;
 
         Coefficients = new Coefficient[totalRows];
-        QubitRows = new BitArray[totalRows];
-        FermiRows = new BitArray[totalRows];
+        QubitRows = new PackedBits[totalRows];
+        FermiRows = new PackedBits[totalRows];
         for (int i = 0; i < totalRows; i++)
         {
-            QubitRows[i] = new BitArray(qubitColumns);
-            FermiRows[i] = new BitArray(fermiColumns);
+            QubitRows[i] = new PackedBits(qubitColumns);
+            FermiRows[i] = new PackedBits(fermiColumns);
         }
     }
 
@@ -31,11 +30,11 @@ internal sealed class PlatformStateFrame
 
     public Coefficient[] Coefficients { get; }
 
-    public BitArray[] QubitRows { get; }
+    public PackedBits[] QubitRows { get; }
 
-    public BitArray[] FermiRows { get; }
+    public PackedBits[] FermiRows { get; }
 
-    public bool CommutesPauli(int row, BitArray opQubits)
+    public bool CommutesPauli(int row, PackedBits opQubits)
     {
         ValidateRowIndex(row);
         ValidatePauliOperatorDimensions(opQubits);
@@ -48,39 +47,37 @@ internal sealed class PlatformStateFrame
         ValidateRowIndex(sourceRow);
 
         Coefficients[targetRow] *= Coefficients[sourceRow];
-        QubitRows[targetRow].Xor(QubitRows[sourceRow]);
+        QubitRows[targetRow].XorInPlace(QubitRows[sourceRow]);
     }
 
-    public void OverwritePauliRow(int row, BitArray qubits, Coefficient coefficient)
+    public void OverwritePauliRow(int row, PackedBits qubits, Coefficient coefficient)
     {
         ValidateRowIndex(row);
         ValidatePauliOperatorDimensions(qubits);
 
         Coefficients[row] = coefficient;
-        QubitRows[row].SetAll(false);
-        QubitRows[row].Or(qubits);
+        QubitRows[row].Clear();
+        QubitRows[row].OrInPlace(qubits);
         if (_fermiColumns != 0)
         {
-            FermiRows[row].SetAll(false);
+            FermiRows[row].Clear();
         }
     }
 
-    public bool TrySolvePauliSpan(BitArray targetQubits, out bool[] solution)
+    public bool TrySolvePauliSpan(PackedBits targetQubits, out bool[] solution)
     {
         ValidatePauliOperatorDimensions(targetQubits);
 
         int rowCount = TotalRows;
         int colCount = targetQubits.Length;
 
-        var rows = new BitArray[rowCount];
-        var combos = new BitArray[rowCount];
+        var rows = new PackedBits[rowCount];
+        var combos = new PackedBits[rowCount];
         for (int i = 0; i < rowCount; i++)
         {
-            rows[i] = new BitArray(QubitRows[i]);
-            combos[i] = new BitArray(rowCount)
-            {
-                [i] = true
-            };
+            rows[i] = QubitRows[i].Clone();
+            combos[i] = new PackedBits(rowCount);
+            combos[i][i] = true;
         }
 
         var pivotRows = new List<int>();
@@ -114,8 +111,8 @@ internal sealed class PlatformStateFrame
             {
                 if (row != pivotRow && rows[row][col])
                 {
-                    rows[row].Xor(rows[pivotRow]);
-                    combos[row].Xor(combos[pivotRow]);
+                    rows[row].XorInPlace(rows[pivotRow]);
+                    combos[row].XorInPlace(combos[pivotRow]);
                 }
             }
 
@@ -124,8 +121,8 @@ internal sealed class PlatformStateFrame
             pivotRow++;
         }
 
-        var reducedTarget = new BitArray(targetQubits);
-        var reducedCombo = new BitArray(rowCount);
+        var reducedTarget = targetQubits.Clone();
+        var reducedCombo = new PackedBits(rowCount);
         for (int i = 0; i < pivotRows.Count; i++)
         {
             int row = pivotRows[i];
@@ -135,8 +132,8 @@ internal sealed class PlatformStateFrame
                 continue;
             }
 
-            reducedTarget.Xor(rows[row]);
-            reducedCombo.Xor(combos[row]);
+            reducedTarget.XorInPlace(rows[row]);
+            reducedCombo.XorInPlace(combos[row]);
         }
 
         if (reducedTarget.Weight() != 0)
@@ -184,7 +181,7 @@ internal sealed class PlatformStateFrame
         }
     }
 
-    private void ValidatePauliOperatorDimensions(BitArray qubits)
+    private void ValidatePauliOperatorDimensions(PackedBits qubits)
     {
         if (qubits.Length != _qubitColumns)
         {

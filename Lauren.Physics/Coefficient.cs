@@ -32,7 +32,7 @@ public static class CoefficientExtensions
         ///     Get the complex value of the coefficient.
         /// </summary>
         public Complex ToComplex() => ComplexByCoefficient[coefficient.ToPhase()];
-        
+
         /// <summary>
         ///     Return the Coefficient corresponding to the given complex number.
         /// </summary>

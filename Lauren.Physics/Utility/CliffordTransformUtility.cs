@@ -1,4 +1,3 @@
-using System.Collections;
 // ReSharper disable InconsistentNaming
 
 namespace Lauren.Physics.Utility;
@@ -9,7 +8,7 @@ internal static class CliffordTransformUtility
 
     public static int GetPauliZColumn(int qubitIndex) => (2 * qubitIndex) + 1;
 
-    public static Coefficient ApplyH(BitArray qubits, int qubitIndex)
+    public static Coefficient ApplyH(PackedBits qubits, int qubitIndex)
     {
         int xColumn = GetPauliXColumn(qubitIndex);
         int zColumn = GetPauliZColumn(qubitIndex);
@@ -20,7 +19,7 @@ internal static class CliffordTransformUtility
         return xOccupied && zOccupied ? Coefficient.MinusOne : Coefficient.PlusOne;
     }
 
-    public static Coefficient ApplyS(BitArray qubits, int qubitIndex)
+    public static Coefficient ApplyS(PackedBits qubits, int qubitIndex)
     {
         int xColumn = GetPauliXColumn(qubitIndex);
         int zColumn = GetPauliZColumn(qubitIndex);
@@ -29,7 +28,7 @@ internal static class CliffordTransformUtility
         return xOccupied ? Coefficient.PlusI : Coefficient.PlusOne;
     }
 
-    public static void ApplyCX(BitArray qubits, int controlIndex, int targetIndex)
+    public static void ApplyCX(PackedBits qubits, int controlIndex, int targetIndex)
     {
         int controlXColumn = GetPauliXColumn(controlIndex);
         int controlZColumn = GetPauliZColumn(controlIndex);

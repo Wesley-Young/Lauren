@@ -5,59 +5,85 @@ namespace Lauren.Physics.Operators;
 
 public abstract class QuantumOperator : IEquatable<QuantumOperator>
 {
+    private readonly PackedBits _occupiedX;
+    private readonly PackedBits _occupiedZ;
+    private PackedBits? _zippedOccupationsPacked;
+
     /// <exception cref="ArgumentException">
     ///     Thrown when occupiedX and occupiedZ have different lengths.
     /// </exception>
     protected QuantumOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient coefficient = Coefficient.PlusI)
+        : this(new PackedBits(occupiedX), new PackedBits(occupiedZ), coefficient)
+    {
+    }
+
+    /// <exception cref="ArgumentException">
+    ///     Thrown when occupiedX and occupiedZ have different lengths.
+    /// </exception>
+    internal QuantumOperator(PackedBits occupiedX, PackedBits occupiedZ, Coefficient coefficient = Coefficient.PlusI)
     {
         if (occupiedX.Length != occupiedZ.Length)
+        {
             throw new ArgumentException("OccupiedX and OccupiedZ must have the same length.");
+        }
 
-        OccupiedX = occupiedX;
-        OccupiedZ = occupiedZ;
+        _occupiedX = occupiedX;
+        _occupiedZ = occupiedZ;
         Coefficient = coefficient;
     }
 
     /// <summary>
     ///     BitArray representing which qubits have X operations applied.
     /// </summary>
-    public BitArray OccupiedX { get; }
+    public BitArray OccupiedX => _occupiedX.ToBitArray();
 
     /// <summary>
     ///     BitArray representing which qubits have Z operations applied.
     /// </summary>
-    public BitArray OccupiedZ { get; }
+    public BitArray OccupiedZ => _occupiedZ.ToBitArray();
 
     /// <summary>
     ///     Coefficient of the quantum operator.
     /// </summary>
     public Coefficient Coefficient { get; }
 
+    internal PackedBits OccupiedXPacked => _occupiedX;
+
+    internal PackedBits OccupiedZPacked => _occupiedZ;
+
     /// <summary>
     ///     The weight, i.e. the number of qubits this operator acts non-trivially on,
     ///     counting X and Z on the same qubit separately.
     /// </summary>
-    public int Weight => OccupiedX.Weight() + OccupiedZ.Weight();
+    public int Weight => _occupiedX.Weight() + _occupiedZ.Weight();
 
     /// <summary>
     ///     The reduced weight, i.e. the number of qubits this operator acts non-trivially on,
     ///     counting X and Z on the same qubit only once.
     /// </summary>
-    public int ReducedWeight => BitArray.OrWeight(OccupiedX, OccupiedZ);
+    public int ReducedWeight => PackedBits.OrWeight(_occupiedX, _occupiedZ);
 
     public bool Equals(QuantumOperator? other)
     {
         if (other is null)
+        {
             return false;
+        }
 
         if (ReferenceEquals(this, other))
+        {
             return true;
+        }
 
-        if (!BitArray.ValueEquals(OccupiedX, other.OccupiedX))
+        if (!_occupiedX.Equals(other._occupiedX))
+        {
             return false;
-        
-        if (!BitArray.ValueEquals(OccupiedZ, other.OccupiedZ))
+        }
+
+        if (!_occupiedZ.Equals(other._occupiedZ))
+        {
             return false;
+        }
 
         return Coefficient == other.Coefficient;
     }
@@ -67,17 +93,10 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
     ///     For example, if OccupiedX = [true, false, true] and OccupiedZ = [false, true, false],
     ///     the result will be [true, false, false, true, true, false].
     /// </summary>
-    public BitArray ZippedOccupations()
-    {
-        var result = new BitArray(OccupiedX.Length * 2);
-        for (int i = 0; i < OccupiedX.Length; i++)
-        {
-            result[i * 2] = OccupiedX[i];
-            result[i * 2 + 1] = OccupiedZ[i];
-        }
+    public BitArray ZippedOccupations() => ZippedOccupationsPacked().ToBitArray();
 
-        return result;
-    }
+    internal PackedBits ZippedOccupationsPacked() =>
+        _zippedOccupationsPacked ??= PackedBits.ZipPauli(_occupiedX, _occupiedZ);
 
     /// <summary>
     ///     Multiplies this quantum operator with another quantum operator at its right.
@@ -123,6 +142,6 @@ public abstract class QuantumOperator : IEquatable<QuantumOperator>
 
     public override int GetHashCode()
     {
-        return HashCode.Combine(OccupiedX, OccupiedZ, Coefficient);
+        return HashCode.Combine(_occupiedX, _occupiedZ, Coefficient);
     }
 }

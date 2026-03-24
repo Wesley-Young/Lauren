@@ -1,6 +1,6 @@
-using System.Collections;
 using Lauren.Physics.Operators;
 using Lauren.Physics.Utility;
+
 // ReSharper disable InconsistentNaming
 
 namespace Lauren.Physics.Platforms;
@@ -10,7 +10,7 @@ namespace Lauren.Physics.Platforms;
 /// </summary>
 public sealed class Frame
 {
-    private BitArray _qubitFrame = new(0);
+    private PackedBits _qubitFrame = new(0);
 
     public int PauliCount { get; private set; }
 
@@ -19,7 +19,7 @@ public sealed class Frame
         ArgumentOutOfRangeException.ThrowIfNegative(pauliCount);
 
         PauliCount = pauliCount;
-        _qubitFrame = new BitArray(2 * pauliCount);
+        _qubitFrame = new PackedBits(2 * pauliCount);
 
         for (int i = 0; i < pauliCount; i++)
         {
@@ -38,13 +38,23 @@ public sealed class Frame
         }
 
         PlatformArgumentUtility.ValidateReferenceMeasurementValue(referenceValue);
-        var embedded = OperatorEmbeddingUtility.EmbedPauli(op, PauliCount);
-        bool commutes = CommutationUtility.CommutesPauli(_qubitFrame, embedded.Qubits);
+        if (op is not PauliOperator pauli)
+        {
+            throw new ArgumentException("Measurement operator must be a PauliOperator.", nameof(op));
+        }
+
+        if (pauli.OccupiedXPacked.Length != PauliCount)
+        {
+            throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.", nameof(op));
+        }
+
+        var measurementQubits = pauli.ZippedOccupationsPacked();
+        bool commutes = CommutationUtility.CommutesPauli(_qubitFrame, measurementQubits);
         int result = commutes ? referenceValue : -referenceValue;
 
         if (Random.Shared.NextDouble() < 0.5)
         {
-            _qubitFrame.Xor(embedded.Qubits);
+            _qubitFrame.XorInPlace(measurementQubits);
         }
 
         return result;

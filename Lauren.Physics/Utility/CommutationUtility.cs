@@ -1,23 +1,32 @@
-using System.Collections;
+using System.Numerics;
 
 namespace Lauren.Physics.Utility;
 
 internal static class CommutationUtility
 {
-    public static bool CommutesPauli(BitArray lhsQubits, BitArray rhsQubits)
+    private const ulong EvenBitMask = 0x5555555555555555UL;
+
+    public static bool CommutesPauli(PackedBits lhsQubits, PackedBits rhsQubits)
     {
         if (lhsQubits.Length != rhsQubits.Length)
         {
             throw new ArgumentException("Operator dimensions do not match.");
         }
 
-        bool parity = false;
-        for (int i = 0; i < lhsQubits.Length; i += 2)
+        int parity = 0;
+        var lhsWords = lhsQubits.Words;
+        var rhsWords = rhsQubits.Words;
+        for (int i = 0; i < lhsWords.Length; i++)
         {
-            if (lhsQubits[i] && rhsQubits[i + 1]) parity = !parity;
-            if (lhsQubits[i + 1] && rhsQubits[i]) parity = !parity;
+            ulong lhsEven = lhsWords[i] & EvenBitMask;
+            ulong lhsOddShifted = (lhsWords[i] >> 1) & EvenBitMask;
+            ulong rhsEven = rhsWords[i] & EvenBitMask;
+            ulong rhsOddShifted = (rhsWords[i] >> 1) & EvenBitMask;
+
+            parity ^= BitOperations.PopCount(lhsEven & rhsOddShifted);
+            parity ^= BitOperations.PopCount(lhsOddShifted & rhsEven);
         }
 
-        return !parity;
+        return (parity & 1) == 0;
     }
 }

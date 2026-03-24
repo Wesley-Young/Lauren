@@ -3,54 +3,74 @@ using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Operators;
 
-public class PauliOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient coefficient = Coefficient.PlusI) :
-    QuantumOperator(occupiedX, occupiedZ, coefficient)
+public class PauliOperator : QuantumOperator
 {
+    public PauliOperator(BitArray occupiedX, BitArray occupiedZ, Coefficient coefficient = Coefficient.PlusI)
+        : base(occupiedX, occupiedZ, coefficient)
+    {
+    }
+
+    internal PauliOperator(PackedBits occupiedX, PackedBits occupiedZ, Coefficient coefficient = Coefficient.PlusI)
+        : base(occupiedX, occupiedZ, coefficient)
+    {
+    }
+
     public override PauliOperator Multiply(QuantumOperator other)
     {
-        if (other is not PauliOperator)
+        if (other is not PauliOperator pauli)
+        {
             throw new ArgumentException("Can only multiply PauliOperator by another PauliOperator.", nameof(other));
-        var newOccupiedX = ((BitArray)OccupiedX.Clone()).Xor(other.OccupiedX);
-        var newOccupiedZ = ((BitArray)OccupiedZ.Clone()).Xor(other.OccupiedZ);
-        var newCoefficient = Coefficient * other.Coefficient;
+        }
+
+        var newOccupiedX = OccupiedXPacked.Clone();
+        newOccupiedX.XorInPlace(pauli.OccupiedXPacked);
+
+        var newOccupiedZ = OccupiedZPacked.Clone();
+        newOccupiedZ.XorInPlace(pauli.OccupiedZPacked);
+
+        var newCoefficient = Coefficient * pauli.Coefficient;
         return new PauliOperator(newOccupiedX, newOccupiedZ, newCoefficient);
     }
 
     public override PauliOperator Multiply(Coefficient coefficient) =>
-        new((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient * coefficient);
+        new(OccupiedXPacked.Clone(), OccupiedZPacked.Clone(), Coefficient * coefficient);
 
     public override PauliOperator Negate() =>
-        new((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient * Coefficient.MinusOne);
+        new(OccupiedXPacked.Clone(), OccupiedZPacked.Clone(), Coefficient * Coefficient.MinusOne);
 
     public override PauliOperator Dual() =>
-        new((BitArray)OccupiedZ.Clone(), (BitArray)OccupiedX.Clone(), Coefficient);
+        new(OccupiedZPacked.Clone(), OccupiedXPacked.Clone(), Coefficient);
 
     public override bool IsHermitian()
     {
-        int andWeight = BitArray.AndWeight(OccupiedX, OccupiedZ);
-        // X @ Z = iY, which breaks hermiticity; however i * i = -1, so even weights preserve hermiticity
+        int andWeight = PackedBits.AndWeight(OccupiedXPacked, OccupiedZPacked);
         return andWeight % 2 == 0 ? Coefficient.IsReal() : Coefficient.IsImaginary();
     }
 
     public override bool CommutesWith(QuantumOperator other)
     {
-        if (other is not PauliOperator)
+        if (other is not PauliOperator pauli)
+        {
             throw new ArgumentException("Can only check commutation with another PauliOperator.", nameof(other));
-        int overlapXWithZ = BitArray.AndWeight(OccupiedX, other.OccupiedZ);
-        int overlapZWithX = BitArray.AndWeight(OccupiedZ, other.OccupiedX);
-        int totalOverlap = overlapXWithZ + overlapZWithX;
-        return totalOverlap % 2 == 0;
+        }
+
+        int overlapXWithZ = PackedBits.AndWeight(OccupiedXPacked, pauli.OccupiedZPacked);
+        int overlapZWithX = PackedBits.AndWeight(OccupiedZPacked, pauli.OccupiedXPacked);
+        return ((overlapXWithZ + overlapZWithX) & 1) == 0;
     }
 
-    public override PauliOperator Clone() => new ((BitArray)OccupiedX.Clone(), (BitArray)OccupiedZ.Clone(), Coefficient);
+    public override PauliOperator Clone() =>
+        new(OccupiedXPacked.Clone(), OccupiedZPacked.Clone(), Coefficient);
 
     /// <summary>
     ///     Create a Hermitian Pauli operator with correct coefficient based on occupied X and Z bits.
     /// </summary>
     public static PauliOperator CreateHermitian(BitArray occupiedX, BitArray occupiedZ)
     {
-        int andWeight = BitArray.AndWeight(occupiedX, occupiedZ);
+        var packedX = new PackedBits(occupiedX);
+        var packedZ = new PackedBits(occupiedZ);
+        int andWeight = PackedBits.AndWeight(packedX, packedZ);
         var coefficient = andWeight % 2 == 0 ? Coefficient.PlusOne : Coefficient.PlusI;
-        return new PauliOperator(occupiedX, occupiedZ, coefficient);
+        return new PauliOperator(packedX, packedZ, coefficient);
     }
 }

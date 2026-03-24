@@ -1,6 +1,6 @@
-﻿using System.Collections;
-using Lauren.Physics.Operators;
+﻿using Lauren.Physics.Operators;
 using Lauren.Physics.Utility;
+
 // ReSharper disable InconsistentNaming
 
 namespace Lauren.Physics.Platforms;
@@ -139,9 +139,10 @@ public class Platform
     {
         PlatformArgumentUtility.ValidatePauliQubitIndex(qubitIndex, PauliCount);
 
-        var occupiedZ = new BitArray(PauliCount);
+        var occupiedX = new PackedBits(PauliCount);
+        var occupiedZ = new PackedBits(PauliCount);
         occupiedZ[qubitIndex] = true;
-        var zOperator = new PauliOperator(new BitArray(PauliCount), occupiedZ, Coefficient.PlusOne);
+        var zOperator = new PauliOperator(occupiedX, occupiedZ, Coefficient.PlusOne);
         if (Measure(zOperator) == -1)
         {
             X(qubitIndex);
@@ -155,14 +156,24 @@ public class Platform
             throw new ArgumentException("Detection operator must be Hermitian.");
         }
 
-        var detection = OperatorEmbeddingUtility.EmbedPauli(op, PauliCount);
-        if (!_state.TrySolvePauliSpan(detection.Qubits, out bool[] solution))
+        if (op is not PauliOperator pauli)
+        {
+            throw new ArgumentException("Detection operator must be a PauliOperator.", nameof(op));
+        }
+
+        if (pauli.OccupiedXPacked.Length != PauliCount)
+        {
+            throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.", nameof(op));
+        }
+
+        var detectionQubits = pauli.ZippedOccupationsPacked();
+        if (!_state.TrySolvePauliSpan(detectionQubits, out bool[] solution))
         {
             return null;
         }
 
         var evaluatedCoefficient = _state.MultiplySelectedCoefficient(solution);
-        return evaluatedCoefficient == detection.Coefficient ? 1 : -1;
+        return evaluatedCoefficient == pauli.Coefficient ? 1 : -1;
     }
 
     public int Measure(QuantumOperator op)
@@ -172,12 +183,22 @@ public class Platform
             throw new ArgumentException("Measurement operator must be Hermitian.");
         }
 
-        var measurement = OperatorEmbeddingUtility.EmbedPauli(op, PauliCount);
+        if (op is not PauliOperator pauli)
+        {
+            throw new ArgumentException("Measurement operator must be a PauliOperator.", nameof(op));
+        }
+
+        if (pauli.OccupiedXPacked.Length != PauliCount)
+        {
+            throw new ArgumentException("Pauli operator size does not match platform Pauli qubit count.", nameof(op));
+        }
+
+        var measurementQubits = pauli.ZippedOccupationsPacked();
 
         int firstAnticommutingIndex = -1;
         for (int i = 0; i < _state.TotalRows; i++)
         {
-            if (_state.CommutesPauli(i, measurement.Qubits))
+            if (_state.CommutesPauli(i, measurementQubits))
             {
                 continue;
             }
@@ -195,18 +216,18 @@ public class Platform
         {
             bool isPlusOutcome = Random.Shared.NextDouble() < 0.5;
             var coefficient = isPlusOutcome
-                ? measurement.Coefficient
-                : measurement.Coefficient * Coefficient.MinusOne;
-            _state.OverwritePauliRow(firstAnticommutingIndex, measurement.Qubits, coefficient);
+                ? pauli.Coefficient
+                : pauli.Coefficient * Coefficient.MinusOne;
+            _state.OverwritePauliRow(firstAnticommutingIndex, measurementQubits, coefficient);
             return isPlusOutcome ? 1 : -1;
         }
 
-        if (!_state.TrySolvePauliSpan(measurement.Qubits, out bool[] solution))
+        if (!_state.TrySolvePauliSpan(measurementQubits, out bool[] solution))
         {
             throw new InvalidOperationException("Measured operator is not in the span of current stabilizers.");
         }
 
         var evaluatedCoefficient = _state.MultiplySelectedCoefficient(solution);
-        return evaluatedCoefficient == measurement.Coefficient ? 1 : -1;
+        return evaluatedCoefficient == pauli.Coefficient ? 1 : -1;
     }
 }
