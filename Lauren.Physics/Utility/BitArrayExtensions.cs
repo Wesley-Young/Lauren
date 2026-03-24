@@ -190,24 +190,5 @@ public static class BitArrayExtensions
             }
         }
 
-        /// <summary>
-        ///     Compute the parity of exchanges needed to reorder two sets of fermionic modes.
-        /// </summary>
-        /// <returns>True if the number of exchanges is odd, false if even.</returns>
-        public bool ExchangeParityWith(BitArray other)
-        {
-            bool parity = false;
-            bool suffixOdd = false;
-
-            for (int idx = bitArray.Length - 1; idx >= 0; idx--)
-            {
-                if (other[idx])
-                {
-                    parity ^= suffixOdd;
-                }
-                if (bitArray[idx]) suffixOdd = !suffixOdd;
-            }
-            return parity;
-        }
     }
 }

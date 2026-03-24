@@ -11,7 +11,7 @@ public class FrameTests
     public void Measure_NonHermitian_Throws()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
         var nonHermitian = new PauliOperator(
             occupiedX: new BitArray(1) { [0] = true },
             occupiedZ: new BitArray(1) { [0] = true },
@@ -24,7 +24,7 @@ public class FrameTests
     public void Measure_InvalidReferenceValue_Throws()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => frame.Measure(PauliZ(1, 0), 0));
     }
@@ -33,7 +33,7 @@ public class FrameTests
     public void X_IsNoOpOnFrame()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
 
         frame.X(0);
 
@@ -41,21 +41,10 @@ public class FrameTests
     }
 
     [Fact]
-    public void U_IsNoOpOnFrame()
-    {
-        var frame = new Frame();
-        frame.Trap(majoranaCount: 1, pauliCount: 0);
-
-        frame.U(0);
-
-        Assert.Equal(1, frame.Measure(MajoranaParity(1, 0), 1));
-    }
-
-    [Fact]
     public void XError_WithProbabilityOne_FlipsZReferenceMeasurement()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
 
         frame.XError(0, 1);
 
@@ -63,21 +52,10 @@ public class FrameTests
     }
 
     [Fact]
-    public void UError_WithProbabilityOne_FlipsMajoranaParityReferenceMeasurement()
-    {
-        var frame = new Frame();
-        frame.Trap(majoranaCount: 1, pauliCount: 0);
-
-        frame.UError(0, 1);
-
-        Assert.Equal(-1, frame.Measure(MajoranaParity(1, 0), 1));
-    }
-
-    [Fact]
     public void H_PropagatesXFrameIntoZFrame()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
         frame.XError(0, 1);
 
         frame.H(0);
@@ -89,7 +67,7 @@ public class FrameTests
     public void CX_PropagatesControlXErrorToTarget()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 2);
+        frame.Trap(pauliCount: 2);
         frame.XError(0, 1);
 
         frame.CX(0, 1);
@@ -98,22 +76,10 @@ public class FrameTests
     }
 
     [Fact]
-    public void CNX_PropagatesMajoranaControlErrorToPauliTarget()
-    {
-        var frame = new Frame();
-        frame.Trap(majoranaCount: 1, pauliCount: 1);
-        frame.UError(0, 1);
-
-        frame.CNX(0, 0);
-
-        Assert.Equal(-1, frame.Measure(PauliZ(1, 0), 1));
-    }
-
-    [Fact]
     public void Reset_ClearsXFrameComponent()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 0, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
         frame.XError(0, 1);
 
         frame.Reset(0);
@@ -125,14 +91,11 @@ public class FrameTests
     public void OutOfRangeAndInvalidProbability_Throw()
     {
         var frame = new Frame();
-        frame.Trap(majoranaCount: 1, pauliCount: 1);
+        frame.Trap(pauliCount: 1);
 
         Assert.Throws<ArgumentOutOfRangeException>(() => frame.H(1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => frame.P(1));
         Assert.Throws<ArgumentOutOfRangeException>(() => frame.CX(-1, 0));
-        Assert.Throws<ArgumentOutOfRangeException>(() => frame.CNX(1, 0));
         Assert.Throws<ArgumentOutOfRangeException>(() => frame.XError(0, -0.1));
-        Assert.Throws<ArgumentOutOfRangeException>(() => frame.UError(0, 1.1));
     }
 
     private static PauliOperator PauliX(int count, int index)
@@ -147,14 +110,5 @@ public class FrameTests
         var z = new BitArray(count);
         z[index] = true;
         return new PauliOperator(new BitArray(count), z, Coefficient.PlusOne);
-    }
-
-    private static MajoranaOperator MajoranaParity(int count, int index)
-    {
-        var x = new BitArray(count);
-        var z = new BitArray(count);
-        x[index] = true;
-        z[index] = true;
-        return new MajoranaOperator(x, z, Coefficient.PlusI);
     }
 }

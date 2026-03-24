@@ -10,14 +10,6 @@ internal static class PlatformArgumentUtility
         }
     }
 
-    public static void ValidateMajoranaQubitIndex(int majoranaIndex, int majoranaCount, string paramName = "majoranaIndex")
-    {
-        if ((uint)majoranaIndex >= (uint)majoranaCount)
-        {
-            throw new ArgumentOutOfRangeException(paramName, "Majorana index is out of range.");
-        }
-    }
-
     public static void ValidateProbability(double probability, string paramName = "probability")
     {
         if (double.IsNaN(probability) || probability < 0d || probability > 1d)

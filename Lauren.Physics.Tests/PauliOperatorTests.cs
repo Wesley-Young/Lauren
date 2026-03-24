@@ -107,7 +107,7 @@ public class PauliOperatorTests
     public void CommutesWith_WrongType_Throws()
     {
         var left = new PauliOperator(new BitArray(1), new BitArray(1));
-        var right = new MajoranaOperator(new BitArray(1), new BitArray(1));
+        var right = new DummyQuantumOperator(new BitArray(1), new BitArray(1));
 
         Assert.Throws<ArgumentException>(() => left.CommutesWith(right));
     }
@@ -173,5 +173,23 @@ public class PauliOperatorTests
                 return false;
 
         return true;
+    }
+
+    private sealed class DummyQuantumOperator(BitArray occupiedX, BitArray occupiedZ)
+        : QuantumOperator(occupiedX, occupiedZ)
+    {
+        public override QuantumOperator Multiply(QuantumOperator other) => throw new NotSupportedException();
+
+        public override QuantumOperator Multiply(Coefficient coefficient) => throw new NotSupportedException();
+
+        public override QuantumOperator Negate() => throw new NotSupportedException();
+
+        public override QuantumOperator Dual() => throw new NotSupportedException();
+
+        public override bool IsHermitian() => true;
+
+        public override bool CommutesWith(QuantumOperator other) => throw new NotSupportedException();
+
+        public override QuantumOperator Clone() => throw new NotSupportedException();
     }
 }

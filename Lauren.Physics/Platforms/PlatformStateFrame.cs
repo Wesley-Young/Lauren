@@ -10,9 +10,9 @@ internal sealed class PlatformStateFrame
 
     public PlatformStateFrame(int totalRows, int qubitColumns, int fermiColumns)
     {
-        if (totalRows < 0) throw new ArgumentOutOfRangeException(nameof(totalRows));
-        if (qubitColumns < 0) throw new ArgumentOutOfRangeException(nameof(qubitColumns));
-        if (fermiColumns < 0) throw new ArgumentOutOfRangeException(nameof(fermiColumns));
+        ArgumentOutOfRangeException.ThrowIfNegative(totalRows);
+        ArgumentOutOfRangeException.ThrowIfNegative(qubitColumns);
+        ArgumentOutOfRangeException.ThrowIfNegative(fermiColumns);
 
         _qubitColumns = qubitColumns;
         _fermiColumns = fermiColumns;
@@ -35,11 +35,11 @@ internal sealed class PlatformStateFrame
 
     public BitArray[] FermiRows { get; }
 
-    public bool Commutes(int row, BitArray opQubits, BitArray opFermiSites)
+    public bool CommutesPauli(int row, BitArray opQubits)
     {
         ValidateRowIndex(row);
-        ValidateOperatorDimensions(opQubits, opFermiSites);
-        return CommutationUtility.Commutes(QubitRows[row], FermiRows[row], opQubits, opFermiSites);
+        ValidatePauliOperatorDimensions(opQubits);
+        return CommutationUtility.CommutesPauli(QubitRows[row], opQubits);
     }
 
     public void MultiplyRowInPlace(int targetRow, int sourceRow)
@@ -47,41 +47,36 @@ internal sealed class PlatformStateFrame
         ValidateRowIndex(targetRow);
         ValidateRowIndex(sourceRow);
 
-        var coefficient = Coefficients[targetRow] * Coefficients[sourceRow];
-        if (FermiRows[targetRow].ExchangeParityWith(FermiRows[sourceRow]))
-        {
-            coefficient *= Coefficient.MinusOne;
-        }
-
+        Coefficients[targetRow] *= Coefficients[sourceRow];
         QubitRows[targetRow].Xor(QubitRows[sourceRow]);
-        FermiRows[targetRow].Xor(FermiRows[sourceRow]);
-        Coefficients[targetRow] = coefficient;
     }
 
-    public void OverwriteRow(int row, BitArray qubits, BitArray fermiSites, Coefficient coefficient)
+    public void OverwritePauliRow(int row, BitArray qubits, Coefficient coefficient)
     {
         ValidateRowIndex(row);
-        ValidateOperatorDimensions(qubits, fermiSites);
+        ValidatePauliOperatorDimensions(qubits);
 
         Coefficients[row] = coefficient;
         QubitRows[row].SetAll(false);
         QubitRows[row].Or(qubits);
-        FermiRows[row].SetAll(false);
-        FermiRows[row].Or(fermiSites);
+        if (_fermiColumns != 0)
+        {
+            FermiRows[row].SetAll(false);
+        }
     }
 
-    public bool TrySolveSpan(BitArray targetQubits, BitArray targetFermiSites, out bool[] solution)
+    public bool TrySolvePauliSpan(BitArray targetQubits, out bool[] solution)
     {
-        ValidateOperatorDimensions(targetQubits, targetFermiSites);
+        ValidatePauliOperatorDimensions(targetQubits);
 
         int rowCount = TotalRows;
-        int colCount = targetFermiSites.Length + targetQubits.Length;
+        int colCount = targetQubits.Length;
 
         var rows = new BitArray[rowCount];
         var combos = new BitArray[rowCount];
         for (int i = 0; i < rowCount; i++)
         {
-            rows[i] = Flatten(QubitRows[i], FermiRows[i]);
+            rows[i] = new BitArray(QubitRows[i]);
             combos[i] = new BitArray(rowCount)
             {
                 [i] = true
@@ -129,7 +124,7 @@ internal sealed class PlatformStateFrame
             pivotRow++;
         }
 
-        var reducedTarget = Flatten(targetQubits, targetFermiSites);
+        var reducedTarget = new BitArray(targetQubits);
         var reducedCombo = new BitArray(rowCount);
         for (int i = 0; i < pivotRows.Count; i++)
         {
@@ -166,8 +161,6 @@ internal sealed class PlatformStateFrame
             throw new ArgumentException("Selector length must match row count.", nameof(selector));
         }
 
-        var accQubits = new BitArray(_qubitColumns);
-        var accFermiSites = new BitArray(_fermiColumns);
         var accCoefficient = Coefficient.PlusOne;
 
         for (int i = 0; i < TotalRows; i++)
@@ -177,40 +170,10 @@ internal sealed class PlatformStateFrame
                 continue;
             }
 
-            MultiplyAccumulatorWithRow(ref accCoefficient, accQubits, accFermiSites, i);
+            accCoefficient *= Coefficients[i];
         }
 
         return accCoefficient;
-    }
-
-    private void MultiplyAccumulatorWithRow(
-        ref Coefficient accCoefficient, BitArray accQubits, BitArray accFermiSites, int row)
-    {
-        var coefficient = accCoefficient * Coefficients[row];
-        if (accFermiSites.ExchangeParityWith(FermiRows[row]))
-        {
-            coefficient *= Coefficient.MinusOne;
-        }
-
-        accQubits.Xor(QubitRows[row]);
-        accFermiSites.Xor(FermiRows[row]);
-        accCoefficient = coefficient;
-    }
-
-    private BitArray Flatten(BitArray qubits, BitArray fermiSites)
-    {
-        var flattened = new BitArray(fermiSites.Length + qubits.Length);
-        for (int i = 0; i < fermiSites.Length; i++)
-        {
-            flattened[i] = fermiSites[i];
-        }
-
-        for (int i = 0; i < qubits.Length; i++)
-        {
-            flattened[fermiSites.Length + i] = qubits[i];
-        }
-
-        return flattened;
     }
 
     private void ValidateRowIndex(int row)
@@ -221,9 +184,9 @@ internal sealed class PlatformStateFrame
         }
     }
 
-    private void ValidateOperatorDimensions(BitArray qubits, BitArray fermiSites)
+    private void ValidatePauliOperatorDimensions(BitArray qubits)
     {
-        if (qubits.Length != _qubitColumns || fermiSites.Length != _fermiColumns)
+        if (qubits.Length != _qubitColumns)
         {
             throw new ArgumentException("Operator dimensions do not match platform state frame.");
         }
