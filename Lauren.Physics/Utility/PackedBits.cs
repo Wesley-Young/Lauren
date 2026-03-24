@@ -149,6 +149,42 @@ internal sealed class PackedBits : IEquatable<PackedBits>
         return sum;
     }
 
+    public bool TryFindFirstSetBit(int startIndex, out int bitIndex)
+    {
+        if ((uint)startIndex > (uint)Length)
+        {
+            throw new ArgumentOutOfRangeException(nameof(startIndex));
+        }
+
+        if (startIndex == Length)
+        {
+            bitIndex = -1;
+            return false;
+        }
+
+        int wordIndex = startIndex >> 6;
+        int intraWordOffset = startIndex & 63;
+        ulong word = _words[wordIndex] & (ulong.MaxValue << intraWordOffset);
+
+        while (true)
+        {
+            if (word != 0)
+            {
+                bitIndex = (wordIndex << 6) + BitOperations.TrailingZeroCount(word);
+                return bitIndex < Length;
+            }
+
+            wordIndex++;
+            if (wordIndex >= _words.Length)
+            {
+                bitIndex = -1;
+                return false;
+            }
+
+            word = _words[wordIndex];
+        }
+    }
+
     public bool Equals(PackedBits? other)
     {
         if (other is null)

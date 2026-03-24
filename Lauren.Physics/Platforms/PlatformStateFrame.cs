@@ -1,3 +1,4 @@
+using System.Buffers;
 using Lauren.Physics.Utility;
 
 namespace Lauren.Physics.Platforms;
@@ -70,85 +71,114 @@ internal sealed class PlatformStateFrame
 
         int rowCount = TotalRows;
         int colCount = targetQubits.Length;
+        int rowWordCount = targetQubits.Words.Length;
+        int comboWordCount = (rowCount + 63) >> 6;
 
-        var rows = new PackedBits[rowCount];
-        var combos = new PackedBits[rowCount];
-        for (int i = 0; i < rowCount; i++)
+        ulong[] rentedRows = ArrayPool<ulong>.Shared.Rent(rowCount * rowWordCount);
+        ulong[] rentedCombos = ArrayPool<ulong>.Shared.Rent(rowCount * comboWordCount);
+        ulong[] rentedTarget = ArrayPool<ulong>.Shared.Rent(rowWordCount);
+        try
         {
-            rows[i] = QubitRows[i].Clone();
-            combos[i] = new PackedBits(rowCount);
-            combos[i][i] = true;
-        }
-
-        var pivotRows = new List<int>();
-        var pivotColumns = new List<int>();
-
-        int pivotRow = 0;
-        for (int col = 0; col < colCount && pivotRow < rowCount; col++)
-        {
-            int selected = -1;
-            for (int row = pivotRow; row < rowCount; row++)
-            {
-                if (rows[row][col])
-                {
-                    selected = row;
-                    break;
-                }
-            }
-
-            if (selected == -1)
-            {
-                continue;
-            }
-
-            if (selected != pivotRow)
-            {
-                (rows[selected], rows[pivotRow]) = (rows[pivotRow], rows[selected]);
-                (combos[selected], combos[pivotRow]) = (combos[pivotRow], combos[selected]);
-            }
+            var rowBuffer = rentedRows.AsSpan(0, rowCount * rowWordCount);
+            var comboBuffer = rentedCombos.AsSpan(0, rowCount * comboWordCount);
+            var reducedTarget = rentedTarget.AsSpan(0, rowWordCount);
 
             for (int row = 0; row < rowCount; row++)
             {
-                if (row != pivotRow && rows[row][col])
-                {
-                    rows[row].XorInPlace(rows[pivotRow]);
-                    combos[row].XorInPlace(combos[pivotRow]);
-                }
+                QubitRows[row].Words.CopyTo(GetRowSlice(rowBuffer, row, rowWordCount));
             }
 
-            pivotRows.Add(pivotRow);
-            pivotColumns.Add(col);
-            pivotRow++;
-        }
-
-        var reducedTarget = targetQubits.Clone();
-        var reducedCombo = new PackedBits(rowCount);
-        for (int i = 0; i < pivotRows.Count; i++)
-        {
-            int row = pivotRows[i];
-            int col = pivotColumns[i];
-            if (!reducedTarget[col])
+            comboBuffer.Clear();
+            for (int row = 0; row < rowCount; row++)
             {
-                continue;
+                SetBit(GetRowSlice(comboBuffer, row, comboWordCount), row);
             }
 
-            reducedTarget.XorInPlace(rows[row]);
-            reducedCombo.XorInPlace(combos[row]);
-        }
+            targetQubits.Words.CopyTo(reducedTarget);
 
-        if (reducedTarget.Weight() != 0)
+            int[] pivotRows = new int[rowCount];
+            int[] pivotColumns = new int[rowCount];
+            int pivotCount = 0;
+            int pivotRow = 0;
+            for (int col = 0; col < colCount && pivotRow < rowCount; col++)
+            {
+                int selected = -1;
+                for (int row = pivotRow; row < rowCount; row++)
+                {
+                    if (!GetBit(GetRowSlice(rowBuffer, row, rowWordCount), col))
+                    {
+                        continue;
+                    }
+
+                    selected = row;
+                    break;
+                }
+
+                if (selected == -1)
+                {
+                    continue;
+                }
+
+                if (selected != pivotRow)
+                {
+                    SwapRows(rowBuffer, selected, pivotRow, rowWordCount);
+                    SwapRows(comboBuffer, selected, pivotRow, comboWordCount);
+                }
+
+                ReadOnlySpan<ulong> pivotRowWords = GetRowSlice(rowBuffer, pivotRow, rowWordCount);
+                ReadOnlySpan<ulong> pivotComboWords = GetRowSlice(comboBuffer, pivotRow, comboWordCount);
+                for (int row = 0; row < rowCount; row++)
+                {
+                    if (row != pivotRow && GetBit(GetRowSlice(rowBuffer, row, rowWordCount), col))
+                    {
+                        XorInPlace(GetRowSlice(rowBuffer, row, rowWordCount), pivotRowWords);
+                        XorInPlace(GetRowSlice(comboBuffer, row, comboWordCount), pivotComboWords);
+                    }
+                }
+
+                pivotRows[pivotCount] = pivotRow;
+                pivotColumns[pivotCount] = col;
+                pivotCount++;
+                pivotRow++;
+            }
+
+            Span<ulong> reducedCombo = comboWordCount <= 16
+                ? stackalloc ulong[comboWordCount]
+                : new ulong[comboWordCount];
+            reducedCombo.Clear();
+            for (int i = 0; i < pivotCount; i++)
+            {
+                int row = pivotRows[i];
+                int col = pivotColumns[i];
+                if (!GetBit(reducedTarget, col))
+                {
+                    continue;
+                }
+
+                XorInPlace(reducedTarget, GetRowSlice(rowBuffer, row, rowWordCount));
+                XorInPlace(reducedCombo, GetRowSlice(comboBuffer, row, comboWordCount));
+            }
+
+            if (!IsZero(reducedTarget))
+            {
+                solution = Array.Empty<bool>();
+                return false;
+            }
+
+            solution = new bool[rowCount];
+            for (int i = 0; i < rowCount; i++)
+            {
+                solution[i] = GetBit(reducedCombo, i);
+            }
+
+            return true;
+        }
+        finally
         {
-            solution = Array.Empty<bool>();
-            return false;
+            ArrayPool<ulong>.Shared.Return(rentedRows);
+            ArrayPool<ulong>.Shared.Return(rentedCombos, clearArray: true);
+            ArrayPool<ulong>.Shared.Return(rentedTarget);
         }
-
-        solution = new bool[rowCount];
-        for (int i = 0; i < rowCount; i++)
-        {
-            solution[i] = reducedCombo[i];
-        }
-
-        return true;
     }
 
     public Coefficient MultiplySelectedCoefficient(IReadOnlyList<bool> selector)
@@ -187,5 +217,56 @@ internal sealed class PlatformStateFrame
         {
             throw new ArgumentException("Operator dimensions do not match platform state frame.");
         }
+    }
+
+    private static Span<ulong> GetRowSlice(Span<ulong> buffer, int row, int wordCount) =>
+        buffer.Slice(row * wordCount, wordCount);
+
+    private static ReadOnlySpan<ulong> GetRowSlice(ReadOnlySpan<ulong> buffer, int row, int wordCount) =>
+        buffer.Slice(row * wordCount, wordCount);
+
+    private static bool GetBit(ReadOnlySpan<ulong> words, int index)
+    {
+        int wordIndex = index >> 6;
+        int bitIndex = index & 63;
+        return ((words[wordIndex] >> bitIndex) & 1UL) != 0;
+    }
+
+    private static void SetBit(Span<ulong> words, int index)
+    {
+        int wordIndex = index >> 6;
+        int bitIndex = index & 63;
+        words[wordIndex] |= 1UL << bitIndex;
+    }
+
+    private static void XorInPlace(Span<ulong> target, ReadOnlySpan<ulong> source)
+    {
+        for (int i = 0; i < target.Length; i++)
+        {
+            target[i] ^= source[i];
+        }
+    }
+
+    private static void SwapRows(Span<ulong> buffer, int leftRow, int rightRow, int wordCount)
+    {
+        Span<ulong> left = GetRowSlice(buffer, leftRow, wordCount);
+        Span<ulong> right = GetRowSlice(buffer, rightRow, wordCount);
+        for (int i = 0; i < wordCount; i++)
+        {
+            (left[i], right[i]) = (right[i], left[i]);
+        }
+    }
+
+    private static bool IsZero(ReadOnlySpan<ulong> words)
+    {
+        foreach (ulong word in words)
+        {
+            if (word != 0)
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

@@ -1,4 +1,7 @@
 <Solution>
+    <Folder Name="/Benchmarks/">
+        <Project Path="Lauren.Physics.Benchmarks/Lauren.Physics.Benchmarks.csproj" />
+    </Folder>
     <Folder Name="/Tests/">
         <Project Path="Lauren.Physics.Tests/Lauren.Physics.Tests.csproj" />
     </Folder>
