@@ -8,7 +8,7 @@ namespace Lauren.Physics.Platforms;
 /// <summary>
 ///     Tracks only the relative Pauli error frame of a reference trajectory.
 /// </summary>
-public sealed class Frame
+public sealed class Frame : ICliffordPlatform
 {
     private PackedBits _qubitFrame = new(0);
 

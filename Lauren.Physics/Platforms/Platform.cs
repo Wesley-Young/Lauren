@@ -8,7 +8,7 @@ namespace Lauren.Physics.Platforms;
 /// <summary>
 ///     Define a platform state evolution and measurement model based on the Pauli stabilizer representation.
 /// </summary>
-public class Platform
+public class Platform : ICliffordPlatform
 {
     private readonly PlatformStateFrame _state;
 
