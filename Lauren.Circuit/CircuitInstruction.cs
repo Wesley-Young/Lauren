@@ -1,3 +1,5 @@
+// ReSharper disable InconsistentNaming
+
 using System.Collections.Immutable;
 using Lauren.Physics.Operators;
 
@@ -20,8 +22,8 @@ public sealed record CircuitInstruction(
         params int[] qubits) =>
         new(kind, ImmutableArray.Create(qubits), Probability: probability);
 
-    public static CircuitInstruction CreateMpp(PauliOperator target, double probability = 0.0) =>
-        new(CircuitInstructionKind.Mpp, ImmutableArray<int>.Empty, target, probability);
+    public static CircuitInstruction CreateMPP(PauliOperator target, double probability = 0.0) =>
+        new(CircuitInstructionKind.MPP, ImmutableArray<int>.Empty, target, probability);
 
     public static CircuitInstruction CreatePauliError(
         PauliOperator noisePauli,

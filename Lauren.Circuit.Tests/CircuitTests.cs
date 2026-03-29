@@ -1,3 +1,5 @@
+// ReSharper disable InconsistentNaming
+
 using System.Collections;
 using Lauren.Physics;
 using Lauren.Physics.Operators;
@@ -27,27 +29,27 @@ public class CircuitTests
 
         Assert.Throws<InvalidOperationException>(() => circuit.X(0));
         Assert.Throws<InvalidOperationException>(() => circuit.CX(0, 1));
-        Assert.Throws<InvalidOperationException>(() => circuit.Mz(0));
-        Assert.Throws<InvalidOperationException>(() => circuit.Mpp(PauliZ(1, 0)));
+        Assert.Throws<InvalidOperationException>(() => circuit.MZ(0));
+        Assert.Throws<InvalidOperationException>(() => circuit.MPP(PauliZ(1, 0)));
         Assert.Throws<InvalidOperationException>(() => circuit.Depolarize1(0, 0.1));
     }
 
     [Fact]
-    public void Mz_NormalizesIntoMppAndOptionalMeasurementError()
+    public void MZ_NormalizesIntoMPPAndOptionalMeasurementError()
     {
         var circuit = new Circuit();
         circuit.Trap(pauliCount: 2);
 
-        circuit.Mz(qubitIndex: 1, measurementErrorProbability: 0.125);
+        circuit.MZ(qubitIndex: 1, measurementErrorProbability: 0.125);
 
         Assert.Equal(2, circuit.Instructions.Count);
-        Assert.Equal(CircuitInstructionKind.Mz, circuit.Instructions[1].Kind);
+        Assert.Equal(CircuitInstructionKind.MZ, circuit.Instructions[1].Kind);
         Assert.Equal(0.125, circuit.Instructions[1].Probability);
         Assert.Equal(new[] { 1 }, circuit.Instructions[1].Qubits);
 
         Assert.Equal(3, circuit.NormalizedInstructions.Count);
         Assert.Equal(CircuitInstructionKind.Trap, circuit.NormalizedInstructions[0].Kind);
-        Assert.Equal(CircuitInstructionKind.Mpp, circuit.NormalizedInstructions[1].Kind);
+        Assert.Equal(CircuitInstructionKind.MPP, circuit.NormalizedInstructions[1].Kind);
         Assert.Equal(PauliZ(2, 1), circuit.NormalizedInstructions[1].PauliTarget);
         Assert.Equal(CircuitInstructionKind.MeasurementError, circuit.NormalizedInstructions[2].Kind);
 
@@ -56,15 +58,15 @@ public class CircuitTests
     }
 
     [Fact]
-    public void Mpp_RecordsMeasurementAndNoiseInstructionIndices()
+    public void MPP_RecordsMeasurementAndNoiseInstructionIndices()
     {
         var circuit = new Circuit();
         circuit.Trap(pauliCount: 2);
 
-        circuit.Mpp(PauliZ(2, 0), measurementErrorProbability: 0.2);
+        circuit.MPP(PauliZ(2, 0), measurementErrorProbability: 0.2);
 
         Assert.Equal(3, circuit.NormalizedInstructions.Count);
-        Assert.Equal(CircuitInstructionKind.Mpp, circuit.NormalizedInstructions[1].Kind);
+        Assert.Equal(CircuitInstructionKind.MPP, circuit.NormalizedInstructions[1].Kind);
         Assert.Equal(CircuitInstructionKind.MeasurementError, circuit.NormalizedInstructions[2].Kind);
         Assert.Equal(new[] { 1 }, circuit.MeasurementInstructionIndices);
         Assert.Equal(new[] { 2 }, circuit.NoiseInstructionIndices);
@@ -119,8 +121,8 @@ public class CircuitTests
     {
         var circuit = new Circuit();
         circuit.Trap(pauliCount: 2);
-        circuit.Mz(0);
-        circuit.Mz(1);
+        circuit.MZ(0);
+        circuit.MZ(1);
 
         circuit.Detector(-1, -2);
 
@@ -134,8 +136,8 @@ public class CircuitTests
     {
         var circuit = new Circuit();
         circuit.Trap(pauliCount: 2);
-        circuit.Mz(0);
-        circuit.Mz(1);
+        circuit.MZ(0);
+        circuit.MZ(1);
 
         circuit.ObservableInclude(-2, -1);
 

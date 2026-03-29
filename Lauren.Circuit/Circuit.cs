@@ -1,3 +1,5 @@
+// ReSharper disable InconsistentNaming
+
 using System.Collections;
 using System.Collections.Immutable;
 using System.Collections.ObjectModel;
@@ -91,7 +93,7 @@ public sealed class Circuit
         _normalizedInstructions.Add(instruction);
     }
 
-    public void Mpp(PauliOperator target, double measurementErrorProbability = 0.0)
+    public void MPP(PauliOperator target, double measurementErrorProbability = 0.0)
     {
         EnsureTrapAppended();
         ArgumentNullException.ThrowIfNull(target);
@@ -100,11 +102,11 @@ public sealed class Circuit
 
         InvalidateCaches();
 
-        var rawInstruction = CircuitInstruction.CreateMpp(target, measurementErrorProbability);
+        var rawInstruction = CircuitInstruction.CreateMPP(target, measurementErrorProbability);
         _instructions.Add(rawInstruction);
 
         int measurementIndex = _normalizedInstructions.Count;
-        _normalizedInstructions.Add(CircuitInstruction.CreateMpp(target));
+        _normalizedInstructions.Add(CircuitInstruction.CreateMPP(target));
         _measurementInstructionIndices.Add(measurementIndex);
 
         if (measurementErrorProbability > 0d)
@@ -120,7 +122,7 @@ public sealed class Circuit
         }
     }
 
-    public void Mz(int qubitIndex, double measurementErrorProbability = 0.0)
+    public void MZ(int qubitIndex, double measurementErrorProbability = 0.0)
     {
         EnsureTrapAppended();
         ValidateQubitIndex(qubitIndex, nameof(qubitIndex));
@@ -129,8 +131,8 @@ public sealed class Circuit
         InvalidateCaches();
 
         _instructions.Add(
-            CircuitInstruction.Create(
-                CircuitInstructionKind.Mz,
+                CircuitInstruction.Create(
+                CircuitInstructionKind.MZ,
                 measurementErrorProbability,
                 qubitIndex
             )
@@ -237,7 +239,7 @@ public sealed class Circuit
     private void AppendNormalizedMeasurement(PauliOperator target, double measurementErrorProbability)
     {
         int measurementIndex = _normalizedInstructions.Count;
-        _normalizedInstructions.Add(CircuitInstruction.CreateMpp(target));
+        _normalizedInstructions.Add(CircuitInstruction.CreateMPP(target));
         _measurementInstructionIndices.Add(measurementIndex);
 
         if (measurementErrorProbability > 0d)

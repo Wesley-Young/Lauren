@@ -1,3 +1,5 @@
+// ReSharper disable InconsistentNaming
+
 namespace Lauren.Circuit;
 
 public enum CircuitInstructionKind
@@ -11,8 +13,8 @@ public enum CircuitInstructionKind
     S,
     CX,
     Reset,
-    Mz,
-    Mpp,
+    MZ,
+    MPP,
     Depolarize1,
     Depolarize2,
     Detector,
