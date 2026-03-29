@@ -79,6 +79,7 @@ public class CircuitTests
         circuit.Trap(pauliCount: 1);
 
         circuit.Depolarize1(qubitIndex: 0, probability: 0.3);
+        double expectedComponentProbability = (1d - Math.Sqrt(1d - 4d * 0.3d / 3d)) / 2d;
 
         Assert.Equal(2, circuit.Instructions.Count);
         Assert.Equal(CircuitInstructionKind.Depolarize1, circuit.Instructions[1].Kind);
@@ -88,7 +89,7 @@ public class CircuitTests
         {
             Assert.Equal(CircuitInstructionKind.PauliError, instruction.Kind);
             Assert.Equal(NoiseComponentKind.Depolarize1Component, instruction.NoiseKind);
-            Assert.Equal(0.3, instruction.Probability);
+            Assert.Equal(expectedComponentProbability, instruction.Probability, precision: 12);
             Assert.NotNull(instruction.NoisePauli);
         });
         Assert.Equal(new[] { 1, 2, 3 }, circuit.NoiseInstructionIndices);
@@ -101,6 +102,7 @@ public class CircuitTests
         circuit.Trap(pauliCount: 2);
 
         circuit.Depolarize2(firstQubitIndex: 0, secondQubitIndex: 1, probability: 0.4);
+        double expectedComponentProbability = 0.5d * (1d - Math.Pow(1d - 16d * 0.4d / 15d, 1d / 8d));
 
         Assert.Equal(2, circuit.Instructions.Count);
         Assert.Equal(CircuitInstructionKind.Depolarize2, circuit.Instructions[1].Kind);
@@ -110,7 +112,7 @@ public class CircuitTests
         {
             Assert.Equal(CircuitInstructionKind.PauliError, instruction.Kind);
             Assert.Equal(NoiseComponentKind.Depolarize2Component, instruction.NoiseKind);
-            Assert.Equal(0.4, instruction.Probability);
+            Assert.Equal(expectedComponentProbability, instruction.Probability, precision: 12);
             Assert.NotNull(instruction.NoisePauli);
         });
         Assert.Equal(Enumerable.Range(1, 15), circuit.NoiseInstructionIndices);

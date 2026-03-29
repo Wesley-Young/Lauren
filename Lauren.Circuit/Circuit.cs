@@ -151,18 +151,19 @@ public sealed class Circuit
         InvalidateCaches();
 
         _instructions.Add(CircuitInstruction.Create(CircuitInstructionKind.Depolarize1, probability, qubitIndex));
+        double componentProbability = Depolarize1ComponentProbabilityOf(probability);
 
         AppendNormalizedPauliError(
             CreatePauli((qubitIndex, X: true, Z: false)),
-            probability,
+            componentProbability,
             NoiseComponentKind.Depolarize1Component);
         AppendNormalizedPauliError(
             CreatePauli((qubitIndex, X: true, Z: true)),
-            probability,
+            componentProbability,
             NoiseComponentKind.Depolarize1Component);
         AppendNormalizedPauliError(
             CreatePauli((qubitIndex, X: false, Z: true)),
-            probability,
+            componentProbability,
             NoiseComponentKind.Depolarize1Component);
     }
 
@@ -181,10 +182,11 @@ public sealed class Circuit
                 probability,
                 firstQubitIndex,
                 secondQubitIndex));
+        double componentProbability = Depolarize2ComponentProbabilityOf(probability);
 
         foreach (PauliOperator pauli in EnumerateTwoQubitDepolarizingComponents(firstQubitIndex, secondQubitIndex))
         {
-            AppendNormalizedPauliError(pauli, probability, NoiseComponentKind.Depolarize2Component);
+            AppendNormalizedPauliError(pauli, componentProbability, NoiseComponentKind.Depolarize2Component);
         }
     }
 
@@ -367,4 +369,10 @@ public sealed class Circuit
             throw new ArgumentOutOfRangeException(paramName, "Probability must be between 0 and 1.");
         }
     }
+
+    private static double Depolarize1ComponentProbabilityOf(double probability) =>
+        (1d - Math.Sqrt(1d - (4d * probability / 3d))) / 2d;
+
+    private static double Depolarize2ComponentProbabilityOf(double probability) =>
+        0.5d * (1d - Math.Pow(1d - (16d * probability / 15d), 1d / 8d));
 }
