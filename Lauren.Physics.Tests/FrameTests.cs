@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Reflection;
 using Lauren.Physics.Operators;
 using Lauren.Physics.Platforms;
 using Lauren.Physics.Utility;
@@ -77,11 +78,9 @@ public class FrameTests
     }
 
     [Fact]
-    public void S_PropagatesXFrameIntoXMeasurement()
+    public void S_OnDeterministicXFrame_FlipsXMeasurementParity()
     {
-        var frame = new Frame();
-        frame.Trap(pauliCount: 1);
-        frame.XError(0, 1);
+        var frame = CreateFrameWithPauliBits(pauliCount: 1, xOccupied: true, zOccupied: false);
 
         frame.S(0);
 
@@ -135,5 +134,20 @@ public class FrameTests
         var z = new BitArray(count);
         z[index] = true;
         return new PauliOperator(new BitArray(count), z, Coefficient.PlusOne);
+    }
+
+    private static Frame CreateFrameWithPauliBits(int pauliCount, bool xOccupied, bool zOccupied)
+    {
+        var frame = new Frame();
+        frame.Trap(pauliCount);
+
+        var packedBits = new PackedBits(2 * pauliCount);
+        packedBits.SetBitUnchecked(CliffordTransformUtility.GetPauliXColumn(0), xOccupied);
+        packedBits.SetBitUnchecked(CliffordTransformUtility.GetPauliZColumn(0), zOccupied);
+
+        FieldInfo frameField = typeof(Frame).GetField("_qubitFrame", BindingFlags.Instance | BindingFlags.NonPublic)
+                               ?? throw new InvalidOperationException("Could not locate Frame._qubitFrame.");
+        frameField.SetValue(frame, packedBits);
+        return frame;
     }
 }

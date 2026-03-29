@@ -6,7 +6,10 @@ using Lauren.Physics.Utility;
 namespace Lauren.Physics.Platforms;
 
 /// <summary>
-///     Tracks only the relative Pauli error frame of a reference trajectory.
+///     Tracks a simplified Pauli frame relative to a reference trajectory.
+///     This model intentionally includes random gauge/branch bits introduced by initialization,
+///     reset, and anticommuting measurements, matching the behavior used by ExtendedStim's
+///     prototype sampling path.
 /// </summary>
 public sealed class Frame : ICliffordPlatform
 {
@@ -14,6 +17,10 @@ public sealed class Frame : ICliffordPlatform
 
     public int PauliCount { get; private set; }
 
+    /// <summary>
+    ///     Initializes the frame for the given number of qubits and randomly seeds per-qubit Z gauge bits.
+    ///     The initial frame is therefore not required to be the identity frame.
+    /// </summary>
     public void Trap(int pauliCount)
     {
         ArgumentOutOfRangeException.ThrowIfNegative(pauliCount);
@@ -129,6 +136,8 @@ public sealed class Frame : ICliffordPlatform
         int zColumn = CliffordTransformUtility.GetPauliZColumn(qubitIndex);
         _qubitFrame.SetBitUnchecked(xColumn, false);
         _qubitFrame.SetBitUnchecked(zColumn, false);
+
+        // Reset clears the tracked frame on the qubit, then reintroduces a random Z gauge bit.
         if (Random.Shared.NextDouble() < 0.5)
         {
             _qubitFrame.SetBitUnchecked(zColumn, true);
